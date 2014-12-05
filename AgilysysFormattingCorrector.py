@@ -1,6 +1,7 @@
 import re
 import codecs
 import tkinter
+import os
 from tkinter import filedialog
 
 class MenuItem:
@@ -104,11 +105,16 @@ root.withdraw()
 
 file_opt = options = {}
 options['defaultextension'] = '.txt'
-options['filetypes'] = [('all files', '.*'), ('text files', '.txt')]
+options['filetypes'] = [('text files', '.txt'), ('all files', '.*')]
 options['title'] = 'Open Agilysys Export'
+
 file_path = filedialog.askopenfilename(**file_opt)
+save_file = filedialog.asksaveasfilename()
+if (file_path or save_file == None) or (file_path or save_file == ""):
+		print("No file selected")
+		os._exit(1)
 export = codecs.open(file_path, 'r', 'utf8')
-output = codecs.open('C:/Users/beamar01/Dropbox/Compass/Agilysys Formatting Project/MI_Exp_adjusted.txt', 'w+', 'utf8')
+output = codecs.open(save_file, 'w+', 'utf8')
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 itemList = []
 
@@ -132,8 +138,8 @@ def preParse():
 	print("completed")
 
 def generateSimpleExport(items=itemList, altered=True):
-	file_path = filedialog.asksaveasfilename()
-	simpleOutput = codecs.open(file_path, 'w+', 'utf8')
+	simple_file = str(save_file)[:-4] + "_simplified" + str(save_file)[-4:]
+	simpleOutput = codecs.open(simple_file, 'w+', 'utf8')
 	for item in items:
 		if altered:
 			if item.priceLevels != "{}":
@@ -142,8 +148,29 @@ def generateSimpleExport(items=itemList, altered=True):
 			simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
 
 def generateIGPriceUpdate(items=None):
-	inputFile = codecs.open('C:/Users/Ryan/Dropbox/Compass/Agilysys Formatting Project/simple_export.txt', 'r', 'utf8')
-	updateFile = codecs.open('C:/Users/Ryan/Dropbox/Compass/Agilysys Formatting Project/MI_IMP.txt', 'w+', 'utf8')
+	file_opt = options = {}
+	options['defaultextension'] = '.txt'
+	options['filetypes'] = [('text files', '.txt'), ('all files', '.*')]
+	options['title'] = 'Open Simplified Export'
+
+	file_path = filedialog.askopenfilename(**file_opt)
+	if file_path == None or file_path == "":
+		print("No file selected")
+		return
+	inputFile = codecs.open(file_path, 'r', 'utf8')
+	while(True):
+		save_path = filedialog.askdirectory()
+		if save_path != None and save_path != "":
+			save_file = str(save_path) + "/MI_IMP.txt"
+		else:
+			print("No file selected")
+			return
+		try:
+			updateFile = codecs.open(save_file, 'x', 'utf8')
+			break
+		except FileExistsError:
+			print("There is already an Agilysys import file in this directory.  Please try again.")
+	
 	for x in inputFile:
 		details = x.split(",")
 		details[2] = details[2].replace(";", ",").strip("\r\n")
@@ -153,5 +180,6 @@ def generateIGPriceUpdate(items=None):
 	print("File output written successfully")
 
 preParse()
+generateSimpleExport()
 print("fin")
 	

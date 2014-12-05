@@ -1,5 +1,7 @@
 import re
 import codecs
+import tkinter
+from tkinter import filedialog
 
 class MenuItem:
 	"""An object to simplify item property assignment"""
@@ -97,8 +99,16 @@ class MenuItem:
 			print("Price Level " + str(k) + ": " + str(v))
 
 
-export = codecs.open('C:/Users/Ryan/Dropbox/Compass/Agilysys Formatting Project/20141113MorNovHlthMI_Exp.txt', 'r', 'utf8')
-output = codecs.open('C:/Users/Ryan/Dropbox/Compass/Agilysys Formatting Project/MI_Exp_adjusted.txt', 'w+', 'utf8')
+root = tkinter.Tk()
+root.withdraw()
+
+file_opt = options = {}
+options['defaultextension'] = '.txt'
+options['filetypes'] = [('all files', '.*'), ('text files', '.txt')]
+options['title'] = 'Open Agilysys Export'
+file_path = filedialog.askopenfilename(**file_opt)
+export = codecs.open(file_path, 'r', 'utf8')
+output = codecs.open('C:/Users/beamar01/Dropbox/Compass/Agilysys Formatting Project/MI_Exp_adjusted.txt', 'w+', 'utf8')
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 itemList = []
 
@@ -122,7 +132,8 @@ def preParse():
 	print("completed")
 
 def generateSimpleExport(items=itemList, altered=True):
-	simpleOutput = codecs.open('C:/Users/Ryan/Dropbox/Compass/Agilysys Formatting Project/simple_export.txt', 'w+', 'utf8')
+	file_path = filedialog.asksaveasfilename()
+	simpleOutput = codecs.open(file_path, 'w+', 'utf8')
 	for item in items:
 		if altered:
 			if item.priceLevels != "{}":

@@ -5,9 +5,7 @@ import codecs
 import tkinter
 import os
 from Things import MenuItemThings
-
 from tkinter import filedialog
-
 
 
 def openExport(**options):
@@ -21,12 +19,12 @@ def openExport(**options):
     if file_path == None or file_path == "":
         print("No file selected")
         os._exit(1)
-    return options, file_path, file_opt
+    return options, file_path
 
 root = tkinter.Tk()
 root.withdraw()
 
-options, file_path, file_opt = openExport()
+options, file_path = openExport()
 
 options['title'] = 'Save As'
 options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]

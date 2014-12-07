@@ -2,7 +2,16 @@
 
 class MenuItem:
 	"""An object to simplify item property assignment"""
-	def __init__(self, itemID, name, abbr1, abbr2, printLabel, priceLevels, classID, revCategoryID, taxGroup, securityLevel, reportCategory, useWeightFlag, weightTareAmount, sku, gunCode, costAmount, pricePrompt, checkPrintFlag, discountableFlag, voidableFlag, inactiveFlag, taxIncludeFlag, itemGroupID, receiptText, priceOverrideFlag, choiceGroups, kitchenPrinters, covers, storeID, original, parsed):
+	def __init__(
+				self, itemID, name, abbr1, abbr2, printLabel, priceLevels,
+				classID, revCategoryID, taxGroup, securityLevel,
+				reportCategory, useWeightFlag, weightTareAmount, sku,
+				gunCode, costAmount, pricePrompt, checkPrintFlag,
+				discountableFlag, voidableFlag, inactiveFlag,
+				taxIncludeFlag, itemGroupID, receiptText,
+				priceOverrideFlag, choiceGroups, kitchenPrinters, covers,
+				storeID, original="unknown", parsed="unknown"
+				):
 		self.id = itemID #seq 2
 		self.name = name #seq 3
 		self.abbr1 = abbr1 #"""seq 4"""

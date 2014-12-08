@@ -5,6 +5,7 @@ import re
 import codecs
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox
 from Things import MenuItemThings
 from tkinter import filedialog
 
@@ -25,6 +26,7 @@ def openFile(**options):
     file_opt = options
     global file_path
     file_path = filedialog.askopenfilename(**file_opt)
+    options = None
     if file_path == None or file_path == "":
         print("No file selected")
     openFileString.set(str(file_path))
@@ -35,8 +37,8 @@ def openFile(**options):
         
     showButton()
     
-def saveFile(**options):
-    if options == None:
+def saveFile(o=None,**options):
+    if o == None:
         options = {}
         options['title'] = 'Save As'
         options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
@@ -48,7 +50,6 @@ def saveFile(**options):
     simple_file = filedialog.asksaveasfilename(**file_opt)
     if save_file == None or save_file == "":
         print("No file selected")
-    saveFileString.set(str(save_file))
         
 def fixArray(match):
     match = str(match.group(0))
@@ -84,15 +85,18 @@ def generateSimpleExport(items=itemList, altered=True):
                 simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
         else:
             simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
+
+    messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
         
 def simplifyExport(export=None, output=None):
 	if export == None:
 		export = codecs.open(file_path, 'r', 'utf8')
 	if output == None:
+		saveFile()
 		output = codecs.open(save_file, 'w+', 'utf8')
 		
 	preParse(export, output)
-	generateSimpleExport()
+	generateSimpleExport(altered=truncate.get())
     
 def generateIGPriceUpdate():
 	while(True):
@@ -124,10 +128,10 @@ def determineExportType(f):
 		return SIMPLE_EXPORT
         
 def runConversion():
-    if conversionButtonText == "Simplify":
+    if conversionButtonText.get() == "Simplify":
         simplifyExport()
     else:
-        pass
+        print("Button Text is " + conversionButtonText.get())
         
 def hideButton():
     thatButton.grid_remove()
@@ -139,6 +143,10 @@ root = Tk()
 root.option_add('*tearOff', FALSE)
 root.title("Agilysy File Tools")
 
+openFileString = StringVar()
+conversionButtonText = StringVar()
+truncate = StringVar()
+
 menubar = Menu(root)
 menu_file = Menu(menubar)
 menu_options = Menu(menubar)
@@ -148,29 +156,20 @@ menubar.add_cascade(menu=menu_options, label='Options')
 menu_file.add_command(label='Open...', command=openFile)
 menu_file.add_command(label='Close', command=root.quit)
 
-menu_options.add_command(label='Hide', command=hideButton)
+menu_options.add_checkbutton(label='Condense Simplified Output', variable=truncate, onvalue=1, offvalue=0)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=1, sticky=(N, W, E, S))
 mainframe.columnconfigure(0, weight=1)
 mainframe.rowconfigure(1, weight=1)
 
-openFileString = StringVar()
-saveFileString = StringVar()
-conversionButtonText = StringVar()
-
 ttk.Label(mainframe, text="Input File:").grid(column=1, row=1, sticky=(N, W, E))
 openFile_entry = ttk.Entry(mainframe, width=50, textvariable=openFileString)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
-ttk.Label(mainframe, text="Output File:").grid(column=1, row=3, sticky=(W,E))
-saveFile_entry = ttk.Entry(mainframe, width=50, textvariable=saveFileString)
-saveFile_entry.grid(column=1, row=4, sticky=(W,E))
-ttk.Button(mainframe, text="Browse", command=saveFile).grid(column=2, row=4, sticky=W)
-
 global thatButton
 thatButton = ttk.Button(mainframe, textvariable=conversionButtonText, command=runConversion)
-thatButton.grid(column=1, row=5)
+thatButton.grid(column=1, row=3)
 
 for child in mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
 

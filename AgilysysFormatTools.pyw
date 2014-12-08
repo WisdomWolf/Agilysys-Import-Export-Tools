@@ -40,10 +40,10 @@ def openFile(options=None):
 def saveFile(options):
         
     file_opt = options
+    global csv_file
     global save_file
-    global simple_file
-    save_file = str(file_path)[:-4] + ".csv"
-    simple_file = filedialog.asksaveasfilename(**file_opt)
+    csv_file = str(file_path)[:-4] + ".csv"
+    save_file = filedialog.asksaveasfilename(**file_opt)
     if save_file == None or save_file == "":
         print("No file selected")
         
@@ -74,7 +74,7 @@ def preParse(export, output):
     print("completed")
 
 def generateSimpleExport(items=itemList, altered=True):
-    simpleOutput = codecs.open(simple_file, 'w+', 'utf8')
+    simpleOutput = codecs.open(save_file, 'w+', 'utf8')
     for item in items:
         if altered:
             if item.priceLevels != "{}":
@@ -109,15 +109,19 @@ def runConversion():
 		options['title'] = 'Save As'
 		options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
 		saveFile(options)
-		output = codecs.open(save_file, 'w+', 'utf8')
-		preParse(export, output)
+		output = codecs.open(csv_file, 'w+', 'utf8')
+		try:
+			preParse(export, output)
+		except UnicodeDecodeError:
+			export = codecs.open(file_path, 'r', 'latin-1')
+			preParse(export, output)
 		generateSimpleExport(altered=truncate.get())
 	else:
 		options = {}
 		options['title'] = 'Save As'
 		options['initialfile'] = 'MI_IMP.txt'
 		saveFile(options)
-		output = codecs.open(save_file, 'w+', 'utf8')
+		output = codecs.open(save_file, 'w+', 'latin-1')
 		generateIGPriceUpdate(export, output)
 
 def hideButton():

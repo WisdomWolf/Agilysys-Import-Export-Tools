@@ -45,43 +45,15 @@ class MenuItem:
 		self.parsed = parsed
 
 	def printItemDetails(self):
-		print("ID: " + str(self.id))
-		try:
-			print("Name: " + str(self.name))
-		except UnicodeEncodeError:
-			print("Name: *Error reading name*")
-		print("Abbreviation 1: " + str(self.abbr1))
-		print("Abbreviation 2: " + str(self.abbr2))
-		print("Printer Label: " + str(self.printerLabel))
-		print("Price Levels: " + str(self.priceLevels))
-		print("Class ID: " + str(self.classID))
-		print("Revenue Category ID: " + str(self.revCategoryID))
-		print("Tax Group: " + str(self.taxGroup))
-		print("Security Level: " + str(self.securityLevel))
-		print("Report Category: " + str(self.reportCategory))
-		print("Use Weight Flag: " + str(self.useWeightFlag))
-		print("SKU: " + str(self.sku))
-		print("Gun Code: " + str(self.gunCode))
-		print("Cost Amount: " + str(self.costAmount))
-		print("Price Prompt: " + str(self.pricePrompt))
-		print("Print on Check Flag: " + str(self.checkPrintFlag))
-		print("Discountable: " + str(self.discountableFlag))
-		print("Voidable: " + str(self.voidableFlag))
-		print("Inactive: " + str(self.inactiveFlag))
-		print("Tax Include Flag: " + str(self.taxIncludeFlag))
-		print("Item Group ID: " + str(self.itemGroupID))
-		print("Receipt Text: " + str(self.receiptText))
-		print("Price Override Flag: " + str(self.priceOverrideFlag))
-		print("Choice Groups: " + str(self.choiceGroups))
-		print("Kitchen Printers: " + str(self.kitchenPrinters))
-		print("Covers: " + str(self.covers))
-		print("Store ID: " + str(self.storeID))
+		for k,v in self.__dict__.items():
+			print(k + ": " + v)
 		
 	def toString(self):
-  result = []
-		for i in vars(self):
-   result.append(i)
-  return ",".join(result)
+		result = []
+		for k,v in self.__dict__.items():
+			result.append(v)
+		return ",".join(result)
+		
 		
 	def showOriginal(self):
 		print("Orginal Line: " + str(self.original))

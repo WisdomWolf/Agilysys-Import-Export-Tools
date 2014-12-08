@@ -74,6 +74,25 @@ def generateSimpleExport(items=itemList, altered=True):
                 simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
         else:
             simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
+			
+def generateCSV(items=itemList):
+	numberOfLevels = 0
+	itemLine = []
+	for i in items:
+		if len(i.separatePriceLevels()) > numberOfLevels:
+			numberOfLevels = len(i.separatePriceLevels())
+		for k,v in i.separatePriceLevels().items():
+			pass
+	priceLevelHeadings = []
+	for x in range(numberOfLevels):
+		priceLevelHeadings.append('"Price Level ' + str(x + 1) + '"')
+	headings = ",".join(priceLevelHeadings)
+	headings = '"ID","Name",' + headings
+	output_file = str(file_path)[:-4] + "_simplified" + ".csv"
+	output = codecs.open(output_file, 'w+', 'utf8')
+	output.write(headings + "\r\n")
+	tempString = '1,"Things and Stuff",$4.95,,,$5.95,,,,,,$3.99,,\r\n'
+	output.write(tempString)
 
 preParse()
 generateSimpleExport()

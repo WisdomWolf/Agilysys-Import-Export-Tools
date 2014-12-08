@@ -78,7 +78,10 @@ class MenuItem:
 		print("Store ID: " + str(self.storeID))
 		
 	def toString(self):
-		self.printItemDetails()
+  result = []
+		for i in vars(self):
+   result.append(i)
+  return ",".join(result)
 		
 	def showOriginal(self):
 		print("Orginal Line: " + str(self.original))

@@ -19,12 +19,12 @@ def openExport(**options):
     if file_path == None or file_path == "":
         print("No file selected")
         os._exit(1)
-    return options, file_path
+    return options, file_path, file_opt
 
 root = tkinter.Tk()
 root.withdraw()
 
-options, file_path = openExport()
+options, file_path, file_opt = openExport()
 
 options['title'] = 'Save As'
 options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
@@ -77,4 +77,3 @@ def generateSimpleExport(items=itemList, altered=True):
 
 preParse()
 generateSimpleExport()
-os._exit(0)

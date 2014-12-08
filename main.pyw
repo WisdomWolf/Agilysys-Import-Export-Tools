@@ -17,7 +17,7 @@ CSV_EXPORT = 2
 itemList = []
 itemMap = {}
     
-def openFile(**options):
+def openFile(options=None):
     if options == None:
         options = {}
         options['defaultextension'] = '.txt' 
@@ -29,19 +29,15 @@ def openFile(**options):
     options = None
     if file_path == None or file_path == "":
         print("No file selected")
-    openFileString.set(str(file_path))
+    openFileString.set(str(os.path.basename(file_path)))
     if determineExportType(file_path) == IG_EXPORT:
-	    conversionButtonText.set("Simplify")
+        conversionButtonText.set("Simplify")
     else:
-	    conversionButtonText.set("Generate IG Update")
+        conversionButtonText.set("Generate IG Update")
         
     showButton()
     
-def saveFile(o=None,**options):
-    if o == None:
-        options = {}
-        options['title'] = 'Save As'
-        options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
+def saveFile(options):
         
     file_opt = options
     global save_file
@@ -88,37 +84,15 @@ def generateSimpleExport(items=itemList, altered=True):
 
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
         
-def simplifyExport(export=None, output=None):
-	if export == None:
-		export = codecs.open(file_path, 'r', 'utf8')
-	if output == None:
-		saveFile()
-		output = codecs.open(save_file, 'w+', 'utf8')
-		
-	preParse(export, output)
-	generateSimpleExport(altered=truncate.get())
-    
-def generateIGPriceUpdate():
-	while(True):
-		save_path = filedialog.askdirectory()
-		if save_path != None and save_path != "":
-			save_file = str(save_path) + "/MI_IMP.txt"
-		else:
-			print("No file selected")
-			return
-		try:
-			updateFile = codecs.open(save_file, 'x', 'utf8')
-			break
-		except FileExistsError:
-			print("There is already an Agilysys import file in this directory.  Please try again.")
-	
+
+def generateIGPriceUpdate(inputFile, updateFile):	
 	for x in inputFile:
 		details = x.split(",")
 		details[2] = details[2].replace(";", ",").strip("\r\n")
 		line = '"U",' + str(details[0]) + ',,,,,' + str(details[2]) + ',,,,,,,,,,,,,,,,,\r\n'
 		updateFile.write(line)
 	
-	print("File output written successfully")
+	messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
     
 def determineExportType(f):
 	file = codecs.open(f, 'r', 'utf8')
@@ -128,11 +102,24 @@ def determineExportType(f):
 		return SIMPLE_EXPORT
         
 def runConversion():
-    if conversionButtonText.get() == "Simplify":
-        simplifyExport()
-    else:
-        print("Button Text is " + conversionButtonText.get())
-        
+	export = codecs.open(file_path, 'r', 'utf8')
+		
+	if conversionButtonText.get() == "Simplify":
+		options = {}
+		options['title'] = 'Save As'
+		options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
+		saveFile(options)
+		output = codecs.open(save_file, 'w+', 'utf8')
+		preParse(export, output)
+		generateSimpleExport(altered=truncate.get())
+	else:
+		options = {}
+		options['title'] = 'Save As'
+		options['initialfile'] = 'MI_IMP.txt'
+		saveFile(options)
+		output = codecs.open(save_file, 'w+', 'utf8')
+		generateIGPriceUpdate(export, output)
+
 def hideButton():
     thatButton.grid_remove()
     
@@ -164,7 +151,7 @@ mainframe.columnconfigure(0, weight=1)
 mainframe.rowconfigure(1, weight=1)
 
 ttk.Label(mainframe, text="Input File:").grid(column=1, row=1, sticky=(N, W, E))
-openFile_entry = ttk.Entry(mainframe, width=50, textvariable=openFileString)
+openFile_entry = ttk.Entry(mainframe, width=40, textvariable=openFileString)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
 global thatButton

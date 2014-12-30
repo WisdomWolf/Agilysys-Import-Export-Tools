@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
 import os
+import sys
 import re
 import codecs
+import datetime
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
@@ -133,6 +135,10 @@ def showButton():
 root = Tk()
 root.option_add('*tearOff', FALSE)
 root.title("Agilysy File Tools")
+
+save_syserr = sys.stderr
+fsock = open('error.log', 'w')
+sys.stderr = fsock
 
 openFileString = StringVar()
 conversionButtonText = StringVar()

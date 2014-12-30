@@ -47,6 +47,10 @@ class MenuItem:
 	def printItemDetails(self):
 		for k,v in self.__dict__.items():
 			print(k + ": " + v)
+
+	def printItemDetailsSorted(self):
+		for k,v in sorted(self.__dict__.items()):
+			print(k + ": " + v)
 		
 	def toString(self):
 		result = []
@@ -69,11 +73,14 @@ class MenuItem:
 			if int(i) % 2 != 0:
 				level = x
 			else:
-				priceList[level] = x
+				priceList[int(level)] = x
 				level = None
 			i += 1
 		return priceList
-	
+
+	def separatePriceLevelsSorted(self):
+		return sorted(self.separatePriceLevels().items())
+
 	def printPrices(self):
 		prices = self.separatePriceLevels()
 		for k,v in prices.items():

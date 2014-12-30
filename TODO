@@ -1,0 +1,6 @@
+###
+
+- Add function to read data from Excel file
+- Split and Enumerate price levels for output to XLS
+- Add separate function for writing to excel file?
+- Add function to output complete item export to XLS

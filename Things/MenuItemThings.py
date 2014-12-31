@@ -82,6 +82,6 @@ class MenuItem:
 		return sorted(self.separatePriceLevels().items())
 
 	def printPrices(self):
-		prices = self.separatePriceLevels()
+		prices = self.separatePriceLevelsSorted()
 		for k,v in prices.items():
 			print("Price Level " + str(k) + ": " + str(v))

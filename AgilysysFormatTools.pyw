@@ -76,6 +76,13 @@ def preParse(export, output):
             print(errorText)
             output.write("error processing item " + str(i.id) + "\n")
     print("completed")
+    
+def enumeratePriceLevels():
+    numberOfPriceLevels = 0
+    for item in itemList:
+        if len(item.separatePriceLevels()) > numberOfPriceLevels:
+            numberOfPriceLevels = len(item.separatePriceLevels())
+    return numberOfPriceLevels
 
 def generateSimpleExport(items=itemList, altered=True):
     simpleOutput = codecs.open(save_file, 'w+', 'utf8')
@@ -83,20 +90,23 @@ def generateSimpleExport(items=itemList, altered=True):
     book = Workbook()
     heading = easyxf(
         'font: bold True;'
-        'align: horizontal center'
+        'alignment: horizontal center;'
         )
     sheet = book.add_sheet('Sheet 1')
     sheet.panes_frozen = True
     sheet.remove_splits = True
     sheet.horz_split_pos = 1
     row1 = sheet.row(0)
-    row1.write(0, 'ID')
-    row1.write(1, 'Name')
-    row1.write(2, 'Prices')
-    row1.set_style(heading)
+    row1.write(0, 'ID', heading)
+    row1.write(1, 'Name', heading)
     
-    for i,item in zip(range(len(items)),items):
-        i += 1
+    numberOfPriceLevels = enumeratePriceLevels()
+    for x in range(numberOfPriceLevels):
+        col = x + 2
+        row1.write(col, 'Price Level ' + str(x + 1), heading)
+        sheet.col(col).width = 4260
+    
+    for i,item in zip(range(1, len(items) + 1),items):
         if altered:
             if item.priceLevels != "{}":
                 simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
@@ -105,8 +115,13 @@ def generateSimpleExport(items=itemList, altered=True):
         row = sheet.row(i)
         row.write(0, str(item.id))
         row.write(1, str(item.name))
-        row.write(2, str(item.priceLevels))
-        
+        for p in range(1, (numberOfPriceLevels + 1)):
+            if p in item.separatePriceLevels():
+                price = item.separatePriceLevels()[p]
+            else:
+                price = ''
+            row.write((p + 1), str(price))
+    
     sheet.col(1).width = 12780
     book.save('simple_export.xls')
     print('excel workbook saved')

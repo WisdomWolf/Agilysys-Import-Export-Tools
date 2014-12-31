@@ -11,7 +11,7 @@ from tkinter import messagebox
 from Things import MenuItemThings
 from tkinter import filedialog
 from tempfile import TemporaryFile
-from xlwt import Workbook
+from xlwt import Workbook, easyxf
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 IG_EXPORT = 1
@@ -81,6 +81,10 @@ def generateSimpleExport(items=itemList, altered=True):
     simpleOutput = codecs.open(save_file, 'w+', 'utf8')
     
     book = Workbook()
+    heading = easyxf(
+        'font: bold True;'
+        'align: horizontal center'
+        )
     sheet = book.add_sheet('Sheet 1')
     sheet.panes_frozen = True
     sheet.remove_splits = True
@@ -89,10 +93,10 @@ def generateSimpleExport(items=itemList, altered=True):
     row1.write(0, 'ID')
     row1.write(1, 'Name')
     row1.write(2, 'Prices')
-    print('excel workbook created')
+    row1.set_style(heading)
     
-    i = 1
-    for item in items:
+    for i,item in zip(range(len(items)),items):
+        i += 1
         if altered:
             if item.priceLevels != "{}":
                 simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
@@ -102,12 +106,10 @@ def generateSimpleExport(items=itemList, altered=True):
         row.write(0, str(item.id))
         row.write(1, str(item.name))
         row.write(2, str(item.priceLevels))
-        i += 1
         
-    print('saving excel workbook')
     sheet.col(1).width = 12780
     book.save('simple_export.xls')
-    print('simple_export.xls saved')
+    print('excel workbook saved')
 
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
         

@@ -21,6 +21,9 @@ UNKNOWN_EXPORT = 10
 CSV_EXPORT = 2
 itemList = []
 itemMap = {}
+
+def ezPrint(string):
+    print(str(string))
     
 def openFile(options=None):
     if options == None:
@@ -144,24 +147,52 @@ def generateSimpleExport(items=itemList, altered=True):
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
         
 
-def generateIGPriceUpdate(inputFile, updateFile):	
-	for x in inputFile:
-		details = x.split(",")
-		details[2] = details[2].replace(";", ",").strip("\r\n")
-		line = '"U",' + str(details[0]) + ',,,,,' + str(details[2]) + ',,,,,,,,,,,,,,,,,\r\n'
-		updateFile.write(line)
-	
-	messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+def generateIGPriceUpdate(inputFile, updateFile):
+    print('preparing to generate IG Update file')
+    if inputFile[-3:] == 'xls' or inputFile[-4:] == 'xlsx':
+        print('generating IG Update from xls')
+        book = open_workbook(inputFile)
+        sheet = book.sheet_by_index(0)
+        if sheet.ncols > 3:
+            print('Extra Price Levels found.')
+            for row in range(1, sheet.nrows):
+                prices = []
+                for col in range(2, sheet.ncols):
+                    if sheet.cell_value(row,col) != '':
+                        priceLevel = str(col - 1) + ',' + str(sheet.cell_value(row,col))
+                        prices.append(priceLevel)
+                priceImport = '{' + ','.join(prices) + '}'
+                line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(priceImport) + ',,,,,,,,,,,,,,,,,\r\n'
+                updateFile.write(line)
+        else:
+            print('Processing with a single price level')
+            for row in range(1, sheet.nrows):
+                line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(cell_value(row,2)) + ',,,,,,,,,,,,,,,,,\r\n'
+    else:
+        print('generating IG Update from txt or csv')
+        with codecs.open(file_path, 'r', 'utf8') as file:
+            for x in file:
+                details = x.split(",")
+                details[2] = details[2].replace(";", ",").strip("\r\n")
+                line = '"U",' + str(details[0]) + ',,,,,' + str(details[2]) + ',,,,,,,,,,,,,,,,,\r\n'
+                updateFile.write(line)
+
+    messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
     
 def determineExportType(f):
-	file = codecs.open(f, 'r', 'utf8')
-	if len(file.readline().split(",")) > 20:
-		return IG_EXPORT
-	else:
-		return SIMPLE_EXPORT
+    if f[-3:] == 'xls':
+        print('Input file is xls, processing as SIMPLE_EXPORT')
+        return SIMPLE_EXPORT
+    else:
+        file = codecs.open(f, 'r', 'utf8')
+        if len(file.readline().split(",")) > 20:
+            return IG_EXPORT
+        else:
+            return SIMPLE_EXPORT
         
 def runConversion():
-	export = codecs.open(file_path, 'r', 'utf8')
+
+	export = file_path
 		
 	if conversionButtonText.get() == "Simplify":
 		options = {}

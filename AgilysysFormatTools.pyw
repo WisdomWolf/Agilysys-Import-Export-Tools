@@ -12,6 +12,7 @@ from Things import MenuItemThings
 from tkinter import filedialog
 from tempfile import TemporaryFile
 from xlwt import Workbook, easyxf
+from xlrd import open_workbook
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 IG_EXPORT = 1
@@ -76,6 +77,20 @@ def preParse(export, output):
             print(errorText)
             output.write("error processing item " + str(i.id) + "\n")
     print("completed")
+    
+def readFromExcel(file=None):
+    if file == None:
+        file = 'simple_export.xls'
+    
+    book = open_workbook(file)
+    print('openning ' + str(file))
+    sheet = book.sheet_by_index(0)
+    
+    print('name: ' + sheet.name)
+    print('number of rows: ' + str(sheet.nrows))
+    print('number of columns: ' + str(sheet.ncols))
+    print(str(sheet.row(0)))
+    
     
 def enumeratePriceLevels():
     numberOfPriceLevels = 0
@@ -179,7 +194,7 @@ root.option_add('*tearOff', FALSE)
 root.title("Agilysy File Tools")
 
 save_syserr = sys.stderr
-fsock = open('error.log', 'w')
+fsock = open('error.log', 'a+')
 sys.stderr = fsock
 
 openFileString = StringVar()

@@ -3,3 +3,5 @@
 - Add function to read data from Excel file
 - Add separate function for writing to excel file?
 - Add function to output complete item export to XLS
+- Integrate Duplicate Barcode Search
+- Add Duplicate item (based on exact name duplication) search

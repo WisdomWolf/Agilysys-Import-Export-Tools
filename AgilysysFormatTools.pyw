@@ -30,7 +30,7 @@ def openFile(options=None):
         options = {}
         options['defaultextension'] = '.txt' 
         options['filetypes'] = [('Text Files', '.txt'), ('CSV Files', '*.csv*'), ('All Files', '.*')]
-        options['title'] = 'Open Agilysys Export'
+        options['title'] = 'Open...'
     file_opt = options
     global file_path
     file_path = filedialog.askopenfilename(**file_opt)
@@ -146,7 +146,34 @@ def generateSimpleExport(items=itemList, altered=True):
 
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
         
+def convertToExcel(items=itemList, altered=True):
+    simpleOutput = codecs.open(save_file, 'w+', 'utf8')
+    
+    book = Workbook()
+    heading = easyxf(
+        'font: bold True;'
+        'alignment: horizontal center;'
+        )
+    sheet = book.add_sheet('Sheet 1')
+    sheet.panes_frozen = True
+    sheet.remove_splits = True
+    sheet.horz_split_pos = 1
+    row1 = sheet.row(0)
+    row1.write(0, 'ID', heading)
+    row1.write(1, 'Name', heading)
+    
+    for i,item in zip(range(1, len(items) + 1),items):
+        row = sheet.row(i)
+        row.write(0, str(item.id))
+        row.write(1, str(item.name))
+        row.write(2, str(item.priceLevels))
+    
+    sheet.col(1).width = 12780
+    book.save('complete_export.xls')
+    print('excel workbook saved')
 
+    messagebox.showinfo(title='Success', message='Excel export created successfully.')
+        
 def generateIGPriceUpdate(inputFile, updateFile):
     print('preparing to generate IG Update file')
     if inputFile[-3:] == 'xls' or inputFile[-4:] == 'xlsx':

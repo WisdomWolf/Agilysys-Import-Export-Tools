@@ -86,8 +86,8 @@ class MenuItem:
 		for k,v in prices.items():
 			print("Price Level " + str(k) + ": " + str(v))
 			
-def getFlagText(number):
-	if number == 0:
-		return 'False'
-	else:
-		return 'True'
+	def getFlagText(self, number):
+		if number == 0:
+			return 'False'
+		else:
+			return 'True'

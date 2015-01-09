@@ -9,6 +9,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
 from Things import MenuItemThings
+from Things.SheetWrapper import FitSheetWrapper
 from tkinter import filedialog
 from tempfile import TemporaryFile
 from xlwt import Workbook, easyxf
@@ -59,26 +60,31 @@ def fixArray(match):
     match = str(match.group(0))
     return match.replace(",",";")
     
-def preParse(export, output):
-    for x in export:
-        itemDetails = re.sub(priceArrayMatch, fixArray, x)
-        item = itemDetails.split(",")
-        i = MenuItemThings.MenuItem(
-                                item[1], item[2], item[3], item[4], item[5],
-                                item[6], item[7], item[8], item[9], item[10],
-                                item[11], item[12], item[13], item[14], item[15],
-                                item[16], item[18], item[19], item[20], item[21],
-                                item[22], item[23], item[24], item[25], item[26],
-                                item[28], item[29], item[30], item[31]
-                                )
-        itemList.append(i)
-        itemMap[i.id] = i
-        try:
-            output.write(itemDetails)
-        except UnicodeEncodeError:
-            errorText = "\n\n!!!!!!!!!!!!!!!!!!!!!!!\nerror encoding string for print/output\n!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
-            print(errorText)
-            output.write("error processing item " + str(i.id) + "\n")
+def preParse(file_name, output):
+    with codecs.open(file_name, 'r', 'latin-1') as export:
+        print('pre-parse initiated')
+        index = 1
+        for x in export:
+            itemDetails = re.sub(priceArrayMatch, fixArray, x)
+            item = itemDetails.split(",")
+            i = MenuItemThings.MenuItem(
+                                    item[1], item[2], item[3], item[4], item[5],
+                                    item[6], item[7], item[8], item[9], item[10],
+                                    item[11], item[12], item[13], item[14], item[15],
+                                    item[16], item[18], item[19], item[20], item[21],
+                                    item[22], item[23], item[24], item[25], item[26],
+                                    item[28], item[29], item[30], item[31]
+                                    )
+#             print('Item:\n' + i.toString())
+            itemList.append(i)
+            itemMap[i.id] = i
+            try:
+                output.write(itemDetails)
+            except UnicodeEncodeError:
+                errorText = "\n\n!!!!!!!!!!!!!!!!!!!!!!!\nerror encoding string for print/output\n!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
+                print(errorText)
+                output.write("error processing item " + str(i.id) + "\n")
+            index += 1
     print("completed")
     
 def readFromExcel(file=None):
@@ -102,7 +108,8 @@ def enumeratePriceLevels():
             numberOfPriceLevels = len(item.separatePriceLevels())
     return numberOfPriceLevels
 
-def generateSimpleExport(items=itemList, altered=True):
+def generateSimpleExport(items=itemList, altered=True, goExcel=False):
+    print('Generating Simple Export')
     simpleOutput = codecs.open(save_file, 'w+', 'utf8')
     
     book = Workbook()
@@ -142,13 +149,17 @@ def generateSimpleExport(items=itemList, altered=True):
     
     sheet.col(1).width = 12780
     book.save('simple_export.xls')
-    print('excel workbook saved')
-
+    
+    if goExcel:
+        print('Converting to Excel')
+        convertToExcel(items, altered)
+    else:
+        print('Completed Simplify procedure without converting to Excel')
+        
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
         
 def convertToExcel(items=itemList, altered=True):
-    simpleOutput = codecs.open(save_file, 'w+', 'utf8')
-    
+    print('preparing to convert to Excel')
     book = Workbook()
     heading = easyxf(
         'font: bold True;'
@@ -160,13 +171,14 @@ def convertToExcel(items=itemList, altered=True):
     sheet.horz_split_pos = 1
     row1 = sheet.row(0)
     row1.write(0, '0', heading)
+    sheet.col(0).hidden = True
     row1.write(1, '"U"', heading)
     row1.write(2, 'ID', heading)
     row1.write(3, 'Name', heading)
     row1.write(4, 'Abbr1', heading)
     row1.write(5, 'Abbr2', heading)
     row1.write(6, 'Kitchen Printer Label', heading)
-    row1.write(7, 'Price(s)'. heading)
+    row1.write(7, 'Price(s)', heading)
     row1.write(8, 'Product Class ID', heading)
     row1.write(9, 'Revenue Category ID', heading)
     row1.write(10, 'Tax Group ID', heading)
@@ -192,8 +204,12 @@ def convertToExcel(items=itemList, altered=True):
     row1.write(30, 'Kitchen Printers (Logical)', heading)
     row1.write(31, 'Covers', heading)
     row1.write(32, 'Store ID', heading)
+    for i in range(1, 32):
+        sheet.row(1).set_cell_boolean(i, False)
     
-    for i,item in zip(range(1, len(items) + 1),items):
+    print('headings written')
+    
+    for i,item in zip(range(2, len(items) + 2),items):
         row = sheet.row(i)
         row.write(2, str(item.id))
         row.write(3, str(item.name))
@@ -219,7 +235,7 @@ def convertToExcel(items=itemList, altered=True):
         row.write(23, str(item.inactiveFlag))
         row.write(24, str(item.taxIncludeFlag))
         row.write(25, str(item.itemGroupID))
-        row.write(26, str(item.recieptText))
+        row.write(26, str(item.receiptText))
         row.write(27, str(item.priceOverrideFlag))
         row.write(28, 'N/A')
         row.write(29, str(item.choiceGroups))
@@ -227,7 +243,6 @@ def convertToExcel(items=itemList, altered=True):
         row.write(31, str(item.covers))
         row.write(32, str(item.storeID))
     
-    sheet.col(1).width = 12780
     book.save('complete_export.xls')
     print('excel workbook saved')
 
@@ -278,27 +293,28 @@ def determineExportType(f):
         
 def runConversion():
 
-	export = file_path
-		
-	if conversionButtonText.get() == "Simplify":
-		options = {}
-		options['title'] = 'Save As'
-		options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
-		saveFile(options)
-		output = codecs.open(csv_file, 'w+', 'utf8')
-		try:
-			preParse(export, output)
-		except UnicodeDecodeError:
-			export = codecs.open(file_path, 'r', 'latin-1')
-			preParse(export, output)
-		generateSimpleExport(altered=truncate.get())
-	else:
-		options = {}
-		options['title'] = 'Save As'
-		options['initialfile'] = 'MI_IMP.txt'
-		saveFile(options)
-		output = codecs.open(save_file, 'w+', 'latin-1')
-		generateIGPriceUpdate(export, output)
+    export = file_path
+        
+    if conversionButtonText.get() == "Simplify":
+        print('simplifying...')
+        options = {}
+        options['title'] = 'Save As'
+        options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
+        saveFile(options)
+        output = codecs.open(csv_file, 'w+', 'utf8')
+        try:
+            preParse(export, output)
+        except UnicodeDecodeError:
+            export = codecs.open(file_path, 'r', 'latin-1')
+            preParse(export, output)
+        generateSimpleExport(altered=truncate.get(), goExcel=includeExcel.get())
+    else:
+        options = {}
+        options['title'] = 'Save As'
+        options['initialfile'] = 'MI_IMP.txt'
+        saveFile(options)
+        output = codecs.open(save_file, 'w+', 'latin-1')
+        generateIGPriceUpdate(export, output)
 
 def hideButton():
     thatButton.grid_remove()
@@ -317,6 +333,7 @@ sys.stderr = fsock
 openFileString = StringVar()
 conversionButtonText = StringVar()
 truncate = StringVar()
+includeExcel = StringVar()
 
 menubar = Menu(root)
 menu_file = Menu(menubar)
@@ -328,6 +345,7 @@ menu_file.add_command(label='Open...', command=openFile)
 menu_file.add_command(label='Close', command=root.quit)
 
 menu_options.add_checkbutton(label='Condense Simplified Output', variable=truncate, onvalue=1, offvalue=0)
+menu_options.add_checkbutton(label='Generate Complete Excel Export', variable=includeExcel, onvalue=1, offvalue=0)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=1, sticky=(N, W, E, S))

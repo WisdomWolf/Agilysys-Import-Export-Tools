@@ -206,6 +206,7 @@ def convertToExcel(items=itemList, altered=True):
     row1.write(32, 'Store ID', heading)
     for i in range(1, 32):
         sheet.row(1).set_cell_boolean(i, False)
+    sheet.row(1).set_cell_boolean(2, True)
     
     print('headings written')
     
@@ -249,12 +250,15 @@ def convertToExcel(items=itemList, altered=True):
     messagebox.showinfo(title='Success', message='Excel export created successfully.')
         
 def generateIGPriceUpdate(inputFile, updateFile):
-    print('preparing to generate IG Update file')
+    print('preparing to generate IG Price Update file')
     if inputFile[-3:] == 'xls' or inputFile[-4:] == 'xlsx':
         print('generating IG Update from xls')
         book = open_workbook(inputFile)
         sheet = book.sheet_by_index(0)
         if sheet.ncols > 3:
+            if sheet.cell_value(1,1) == True or sheet.cell_value(1,1) == False:
+                generateIGUpdate(book, updateFile)
+                return
             print('Extra Price Levels found.')
             for row in range(1, sheet.nrows):
                 prices = []
@@ -277,6 +281,37 @@ def generateIGPriceUpdate(inputFile, updateFile):
                 details[2] = details[2].replace(";", ",").strip("\r\n")
                 line = '"U",' + str(details[0]) + ',,,,,' + str(details[2]) + ',,,,,,,,,,,,,,,,,\r\n'
                 updateFile.write(line)
+
+    messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+
+def generateIGUpdate(book, updateFile):
+    print('preparing to generate IG Update file')
+    sheet = book.sheet_by_index(0)
+    includeColumns = set()
+    
+    for col in range(3, sheet.ncols):
+        if sheet.cell_value(1, col) == True:
+            includeColumns.add(col)
+            
+    for row in range(2, sheet.nrows):
+        itemProperties = []
+        if sheet.cell_value(row,1) != 'A' and sheet.cell_value(row,1) != 'U' and sheet.cell_value(row,1) != 'D':
+            itemProperties.append('"U"')
+        else:
+            itemProperties.append('"' + str(sheet.cell_value(row,1)) + '"')
+        itemProperties.append(str(sheet.cell_value(row,2)))
+        previousIndex = 2
+        for col in includeColumns:
+            emptySpaces = col - previousIndex - 1
+            for x in range(emptySpaces):
+                itemProperties.append('')
+            itemProperties.append(str(sheet.cell_value(row,col)))
+            previousIndex = col
+        if len(itemProperties) < 32:
+            for x in range(32 - len(itemProperties)):
+                itemProperties.append('')
+        line = ",".join(itemProperties).replace(";",",")
+        updateFile.write(line + "\r\n")
 
     messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
     

@@ -85,3 +85,9 @@ class MenuItem:
 		prices = self.separatePriceLevelsSorted()
 		for k,v in prices.items():
 			print("Price Level " + str(k) + ": " + str(v))
+			
+def getFlagText(number):
+	if number == 0:
+		return 'False'
+	else:
+		return 'True'

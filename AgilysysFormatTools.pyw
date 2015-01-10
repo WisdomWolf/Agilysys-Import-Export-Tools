@@ -4,18 +4,15 @@ import os
 import sys
 import re
 import codecs
-import datetime
 from tkinter import *
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import ttk, messagebox, filedialog
 from Things import MenuItemThings
-from Things.SheetWrapper import FitSheetWrapper
-from tkinter import filedialog
-from tempfile import TemporaryFile
+from Things import SheetWrapper
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
+fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'), ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 IG_EXPORT = 1
 SIMPLE_EXPORT = 3
 UNKNOWN_EXPORT = 10
@@ -29,8 +26,8 @@ def ezPrint(string):
 def openFile(options=None):
     if options == None:
         options = {}
-        options['defaultextension'] = '.txt' 
-        options['filetypes'] = [('Text Files', '.txt'), ('CSV Files', '*.csv*'), ('All Files', '.*')]
+        options['defaultextension'] = '.xls*, .txt' 
+        options['filetypes'] = fileTypeFilters
         options['title'] = 'Open...'
     file_opt = options
     global file_path
@@ -88,8 +85,7 @@ def preParse(file_name, output):
     print("completed")
     
 def readFromExcel(file=None):
-    if file == None:
-        file = 'simple_export.xls'
+    file = file or 'simple_export.xls'
     
     book = open_workbook(file)
     print('openning ' + str(file))
@@ -108,7 +104,8 @@ def enumeratePriceLevels():
             numberOfPriceLevels = len(item.separatePriceLevels())
     return numberOfPriceLevels
 
-def generateSimpleExport(items=itemList, altered=True, goExcel=False):
+def generateSimpleExport(items=None, altered=True, goExcel=False):
+    items = items or itemList
     print('Generating Simple Export')
     simpleOutput = codecs.open(save_file, 'w+', 'utf8')
     
@@ -158,20 +155,24 @@ def generateSimpleExport(items=itemList, altered=True, goExcel=False):
         
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
         
-def convertToExcel(items=itemList, altered=True):
+def convertToExcel(items=None, altered=True):
+    items = items or itemList
     print('preparing to convert to Excel')
     book = Workbook()
     heading = easyxf(
         'font: bold True;'
         'alignment: horizontal center;'
         )
+    print('creating sheet')
     sheet = book.add_sheet('Sheet 1')
+    print('SheetWrapper sheet created')
     sheet.panes_frozen = True
     sheet.remove_splits = True
     sheet.horz_split_pos = 1
     row1 = sheet.row(0)
     row1.write(0, '0', heading)
     sheet.col(0).hidden = True
+    print('beginning heading creation')
     row1.write(1, '"U"', heading)
     row1.write(2, 'ID', heading)
     row1.write(3, 'Name', heading)
@@ -182,6 +183,7 @@ def convertToExcel(items=itemList, altered=True):
     row1.write(8, 'Product Class ID', heading)
     row1.write(9, 'Revenue Category ID', heading)
     row1.write(10, 'Tax Group ID', heading)
+    print('heading 1-10 done')
     row1.write(11, 'Security Level ID', heading)
     row1.write(12, 'Report Category ID', heading)
     row1.write(13, 'Use Weight Flagh', heading)
@@ -192,6 +194,7 @@ def convertToExcel(items=itemList, altered=True):
     row1.write(18, 'Reserved', heading)
     row1.write(19, 'Prompt for Price Flag', heading)
     row1.write(20, 'Print on Check Flag', heading)
+    print('heading 10-20 done')
     row1.write(21, 'Discountable Flag', heading)
     row1.write(22, 'Voidable Flag', heading)
     row1.write(23, 'Not Active Flag', heading)
@@ -202,10 +205,13 @@ def convertToExcel(items=itemList, altered=True):
     row1.write(28, 'Reserved', heading)
     row1.write(29, 'Choice Groups', heading)
     row1.write(30, 'Kitchen Printers (Logical)', heading)
+    print('heading 20-30 done')
     row1.write(31, 'Covers', heading)
     row1.write(32, 'Store ID', heading)
-    for i in range(1, 32):
+    print('heading text done')
+    for i in range(3, 32):
         sheet.row(1).set_cell_boolean(i, False)
+    print('boolean row created')
     sheet.row(1).set_cell_boolean(2, True)
     
     print('headings written')
@@ -272,7 +278,7 @@ def generateIGPriceUpdate(inputFile, updateFile):
         else:
             print('Processing with a single price level')
             for row in range(1, sheet.nrows):
-                line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(cell_value(row,2)) + ',,,,,,,,,,,,,,,,,\r\n'
+                line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(sheet.cell_value(row,2)) + ',,,,,,,,,,,,,,,,,\r\n'
     else:
         print('generating IG Update from txt or csv')
         with codecs.open(file_path, 'r', 'utf8') as file:
@@ -303,12 +309,12 @@ def generateIGUpdate(book, updateFile):
         previousIndex = 2
         for col in includeColumns:
             emptySpaces = col - previousIndex - 1
-            for x in range(emptySpaces):
+            for _ in range(emptySpaces):
                 itemProperties.append('')
             itemProperties.append(str(sheet.cell_value(row,col)))
             previousIndex = col
         if len(itemProperties) < 32:
-            for x in range(32 - len(itemProperties)):
+            for _ in range(32 - len(itemProperties)):
                 itemProperties.append('')
         line = ",".join(itemProperties).replace(";",",")
         updateFile.write(line + "\r\n")

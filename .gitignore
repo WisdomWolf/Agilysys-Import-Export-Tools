@@ -5,3 +5,5 @@
 **.spec
 **.xls
 **pycache**
+/build/
+/dist/

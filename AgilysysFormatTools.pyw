@@ -35,32 +35,34 @@ def openFile(options=None):
     options = None
     if file_path == None or file_path == "":
         print("No file selected")
-    openFileString.set(str(os.path.basename(file_path)))
-    if determineExportType(file_path) == IG_EXPORT:
-        conversionButtonText.set("Simplify")
-    else:
-        conversionButtonText.set("Generate IG Update")
+        return
+    try:
+        if determineExportType(file_path) == IG_EXPORT:
+            conversionButtonText.set("Simplify")
+        else:
+            conversionButtonText.set("Generate IG Update")
+        openFileString.set(str(os.path.basename(file_path)))
+    except IOError:
+        messagebox.showinfo(title='Oops', message='This file is not supported.')
+        return
         
     showButton()
     
 def saveFile(options):
         
     file_opt = options
-    global csv_file
-    global save_file
-    csv_file = str(file_path)[:-4] + ".csv"
     save_file = filedialog.asksaveasfilename(**file_opt)
     if save_file == None or save_file == "":
         print("No file selected")
+    return save_file
         
 def fixArray(match):
     match = str(match.group(0))
     return match.replace(",",";")
     
-def preParse(file_name, output):
+def preParse(file_name):
     with codecs.open(file_name, 'r', 'latin-1') as export:
         print('pre-parse initiated')
-        index = 1
         for x in export:
             itemDetails = re.sub(priceArrayMatch, fixArray, x)
             item = itemDetails.split(",")
@@ -74,29 +76,8 @@ def preParse(file_name, output):
                                     )
 #             print('Item:\n' + i.toString())
             itemList.append(i)
-            itemMap[i.id] = i
-            try:
-                output.write(itemDetails)
-            except UnicodeEncodeError:
-                errorText = "\n\n!!!!!!!!!!!!!!!!!!!!!!!\nerror encoding string for print/output\n!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
-                print(errorText)
-                output.write("error processing item " + str(i.id) + "\n")
-            index += 1
     print("completed")
-    
-def readFromExcel(file=None):
-    file = file or 'simple_export.xls'
-    
-    book = open_workbook(file)
-    print('openning ' + str(file))
-    sheet = book.sheet_by_index(0)
-    
-    print('name: ' + sheet.name)
-    print('number of rows: ' + str(sheet.nrows))
-    print('number of columns: ' + str(sheet.ncols))
-    print(str(sheet.row(0)))
-    
-    
+        
 def enumeratePriceLevels():
     numberOfPriceLevels = 0
     for item in itemList:
@@ -104,10 +85,23 @@ def enumeratePriceLevels():
             numberOfPriceLevels = len(item.separatePriceLevels())
     return numberOfPriceLevels
 
-def generateSimpleExport(items=None, altered=True, goExcel=False):
+def generateSimpleExport(save_file, items=None, altered=True):
     items = items or itemList
     print('Generating Simple Export')
     simpleOutput = codecs.open(save_file, 'w+', 'utf8')
+    
+    for i,item in zip(range(1, len(items) + 1),items):
+        if altered:
+            if item.priceLevels != "{}":
+                simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
+        else:
+            simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
+        
+    messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
+
+def generateSimpleExcel(save_file, items=None, altered=True):
+    items = items or itemList
+    print('Generating Simple Excel')
     
     book = Workbook()
     heading = easyxf(
@@ -130,32 +124,25 @@ def generateSimpleExport(items=None, altered=True, goExcel=False):
     
     for i,item in zip(range(1, len(items) + 1),items):
         if altered:
-            if item.priceLevels != "{}":
-                simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
+            if item.priceLevels == "{}":
+                continue
         else:
-            simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
-        row = sheet.row(i)
-        row.write(0, str(item.id))
-        row.write(1, str(item.name))
-        for p in range(1, (numberOfPriceLevels + 1)):
-            if p in item.separatePriceLevels():
-                price = item.separatePriceLevels()[p]
-            else:
-                price = ''
-            row.write((p + 1), str(price))
+            row = sheet.row(i)
+            row.write(0, str(item.id))
+            row.write(1, str(item.name))
+            for p in range(1, (numberOfPriceLevels + 1)):
+                if p in item.separatePriceLevels():
+                    price = item.separatePriceLevels()[p]
+                else:
+                    price = ''
+                row.write((p + 1), str(price))
     
     sheet.col(1).width = 12780
-    book.save('simple_export.xls')
-    
-    if goExcel:
-        print('Converting to Excel')
-        convertToExcel(items, altered)
-    else:
-        print('Completed Simplify procedure without converting to Excel')
+    book.save(save_file)
         
-    messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
-        
-def convertToExcel(items=None, altered=True):
+    messagebox.showinfo(title='Success', message='Simplified excel sheet created successfully.')
+            
+def generateFullExcel(save_file, items=None, altered=True):
     items = items or itemList
     print('preparing to convert to Excel')
     book = Workbook()
@@ -212,6 +199,7 @@ def convertToExcel(items=None, altered=True):
     for i in range(3, 32):
         sheet.row(1).set_cell_boolean(i, False)
     print('boolean row created')
+    sheet.row(1).set_cell_boolean(1, True)
     sheet.row(1).set_cell_boolean(2, True)
     
     print('headings written')
@@ -250,8 +238,7 @@ def convertToExcel(items=None, altered=True):
         row.write(31, str(item.covers))
         row.write(32, str(item.storeID))
     
-    book.save('complete_export.xls')
-    print('excel workbook saved')
+    book.save(save_file)
 
     messagebox.showinfo(title='Success', message='Excel export created successfully.')
         
@@ -325,12 +312,14 @@ def determineExportType(f):
     if f[-3:] == 'xls':
         print('Input file is xls, processing as SIMPLE_EXPORT')
         return SIMPLE_EXPORT
-    else:
+    elif f[-3:] == 'txt':
         file = codecs.open(f, 'r', 'utf8')
         if len(file.readline().split(",")) > 20:
             return IG_EXPORT
         else:
             return SIMPLE_EXPORT
+    else:
+        raise IOError('UnsupportedFileExtensionError')
         
 def runConversion():
 
@@ -338,22 +327,30 @@ def runConversion():
         
     if conversionButtonText.get() == "Simplify":
         print('simplifying...')
+        try:
+            preParse(export)
+        except UnicodeDecodeError:
+            with codecs.open(file_path, 'r', 'latin-1') as export:
+                preParse(export)
+        fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
         options = {}
         options['title'] = 'Save As'
-        options['initialfile'] = str(file_path)[:-4] + "_simplified" + str(file_path)[-4:]
-        saveFile(options)
-        output = codecs.open(csv_file, 'w+', 'utf8')
-        try:
-            preParse(export, output)
-        except UnicodeDecodeError:
-            export = codecs.open(file_path, 'r', 'latin-1')
-            preParse(export, output)
-        generateSimpleExport(altered=truncate.get(), goExcel=includeExcel.get())
+        options['initialfile'] = fileParts[0] + "_simplified." + fileParts[1]
+        options['filetypes'] = fileTypeFilters
+        save_file = saveFile(options)
+        if save_file:
+            sFileParts = str(os.path.basename(save_file)).rsplit('.', maxsplit=1)
+            if (sFileParts[1] == 'xls' or sFileParts == 'xlsx') and includeExcel.get():
+                generateFullExcel(save_file, altered=truncate.get())
+            elif includeExcel.get() == False:
+                generateSimpleExcel(save_file, altered=truncate.get())
+            else:
+                generateSimpleExport(save_file, altered=truncate.get())
     else:
         options = {}
         options['title'] = 'Save As'
         options['initialfile'] = 'MI_IMP.txt'
-        saveFile(options)
+        save_file = saveFile(options)
         output = codecs.open(save_file, 'w+', 'latin-1')
         generateIGPriceUpdate(export, output)
 

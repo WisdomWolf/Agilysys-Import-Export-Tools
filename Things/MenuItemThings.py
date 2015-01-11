@@ -54,7 +54,7 @@ class MenuItem:
 		
 	def toString(self):
 		result = []
-		for k,v in self.__dict__.items():
+		for _,v in self.__dict__.items():
 			result.append(v)
 		return ",".join(result)
 		

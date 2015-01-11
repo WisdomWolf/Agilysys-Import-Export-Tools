@@ -7,7 +7,6 @@ import codecs
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
 from Things import MenuItemThings
-from Things import SheetWrapper
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
@@ -63,8 +62,8 @@ def fixArray(match):
 def preParse(file_name):
     with codecs.open(file_name, 'r', 'latin-1') as export:
         print('pre-parse initiated')
-        for x in export:
-            itemDetails = re.sub(priceArrayMatch, fixArray, x)
+        for line in export:
+            itemDetails = re.sub(priceArrayMatch, fixArray, line)
             item = itemDetails.split(",")
             i = MenuItemThings.MenuItem(
                                     item[1], item[2], item[3], item[4], item[5],
@@ -90,7 +89,7 @@ def generateSimpleExport(save_file, items=None, altered=True):
     print('Generating Simple Export')
     simpleOutput = codecs.open(save_file, 'w+', 'utf8')
     
-    for i,item in zip(range(1, len(items) + 1),items):
+    for item in items:
         if altered:
             if item.priceLevels != "{}":
                 simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
@@ -150,16 +149,13 @@ def generateFullExcel(save_file, items=None, altered=True):
         'font: bold True;'
         'alignment: horizontal center;'
         )
-    print('creating sheet')
     sheet = book.add_sheet('Sheet 1')
-    print('SheetWrapper sheet created')
     sheet.panes_frozen = True
     sheet.remove_splits = True
     sheet.horz_split_pos = 1
     row1 = sheet.row(0)
     row1.write(0, '0', heading)
     sheet.col(0).hidden = True
-    print('beginning heading creation')
     row1.write(1, '"U"', heading)
     row1.write(2, 'ID', heading)
     row1.write(3, 'Name', heading)
@@ -170,7 +166,6 @@ def generateFullExcel(save_file, items=None, altered=True):
     row1.write(8, 'Product Class ID', heading)
     row1.write(9, 'Revenue Category ID', heading)
     row1.write(10, 'Tax Group ID', heading)
-    print('heading 1-10 done')
     row1.write(11, 'Security Level ID', heading)
     row1.write(12, 'Report Category ID', heading)
     row1.write(13, 'Use Weight Flagh', heading)
@@ -181,7 +176,6 @@ def generateFullExcel(save_file, items=None, altered=True):
     row1.write(18, 'Reserved', heading)
     row1.write(19, 'Prompt for Price Flag', heading)
     row1.write(20, 'Print on Check Flag', heading)
-    print('heading 10-20 done')
     row1.write(21, 'Discountable Flag', heading)
     row1.write(22, 'Voidable Flag', heading)
     row1.write(23, 'Not Active Flag', heading)
@@ -192,17 +186,12 @@ def generateFullExcel(save_file, items=None, altered=True):
     row1.write(28, 'Reserved', heading)
     row1.write(29, 'Choice Groups', heading)
     row1.write(30, 'Kitchen Printers (Logical)', heading)
-    print('heading 20-30 done')
     row1.write(31, 'Covers', heading)
     row1.write(32, 'Store ID', heading)
-    print('heading text done')
     for i in range(3, 32):
         sheet.row(1).set_cell_boolean(i, False)
-    print('boolean row created')
     sheet.row(1).set_cell_boolean(1, True)
     sheet.row(1).set_cell_boolean(2, True)
-    
-    print('headings written')
     
     for i,item in zip(range(2, len(items) + 2),items):
         row = sheet.row(i)

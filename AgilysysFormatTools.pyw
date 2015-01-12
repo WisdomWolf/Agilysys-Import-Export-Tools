@@ -3,6 +3,7 @@
 import os
 import sys
 import re
+import csv
 import codecs
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
@@ -23,6 +24,8 @@ def ezPrint(string):
     print(str(string))
     
 def openFile(options=None):
+    if itemList:
+        itemList.clear()
     if options == None:
         options = {}
         options['defaultextension'] = '.xls*, .txt' 
@@ -38,14 +41,16 @@ def openFile(options=None):
     try:
         if determineExportType(file_path) == IG_EXPORT:
             conversionButtonText.set("Simplify")
+            for button in simplifyButtons:
+                showButton(button)
         else:
             conversionButtonText.set("Generate IG Update")
+            showButton(thatButton)
         openFileString.set(str(os.path.basename(file_path)))
     except IOError:
         messagebox.showinfo(title='Oops', message='This file is not supported.')
         return
         
-    showButton()
     
 def saveFile(options):
         
@@ -193,10 +198,11 @@ def generateFullExcel(save_file, items=None, altered=True):
     sheet.row(1).set_cell_boolean(1, True)
     sheet.row(1).set_cell_boolean(2, True)
     
-    print('heading written')
     
     for i,item in zip(range(2, len(items) + 2),items):
-        print('item: ' + str(item.id))
+        global isMisaligned
+        isMisaligned = False
+        
         row = sheet.row(i)
         row.write(2, int(item.id))
         row.write(3, str(item.name))
@@ -207,33 +213,36 @@ def generateFullExcel(save_file, items=None, altered=True):
         row.write(8, str(item.classID))
         row.write(9, str(item.revCategoryID))
         row.write(10, str(item.taxGroup))
-        print('cell 2 - 10 complete')
         row.write(11, str(item.securityLevel))
         row.write(12, str(item.reportCategory))
-        row.write(13, str(int(item.useWeightFlag)))
+        row.write(13, safeIntCast(item.useWeightFlag))
         row.write(14, str(item.weightTareAmount))
         row.write(15, str(item.sku))
         row.write(16, str(item.gunCode))
         row.write(17, str(item.costAmount))
         row.write(18, 'N/A')
         row.write(19, str(item.pricePrompt))
-        row.write(20, str(int(item.checkPrintFlag)))
-        print('cell 11 - 20 complete')
-        row.write(21, str(int(item.discountableFlag)))
-        row.write(22, str(int(item.voidableFlag)))
-        row.write(23, str(int(item.inactiveFlag)))
-        row.write(24, str(int(item.taxIncludeFlag)))
-        row.write(25, str(int(item.itemGroupID)))
+        row.write(20, safeIntCast(item.checkPrintFlag))
+        row.write(21, safeIntCast(item.discountableFlag))
+        row.write(22, safeIntCast(item.voidableFlag))
+        row.write(23, safeIntCast(item.inactiveFlag))
+        row.write(24, safeIntCast(item.taxIncludeFlag))
+        row.write(25, safeIntCast(item.itemGroupID))
         row.write(26, str(item.receiptText))
-        row.write(27, str(int(item.priceOverrideFlag)))
+        row.write(27, safeIntCast(item.priceOverrideFlag))
         row.write(28, 'N/A')
         row.write(29, str(item.choiceGroups))
         row.write(30, str(item.kitchenPrinters))
-        print('cell 21 - 30 complete')
         row.write(31, str(item.covers))
         row.write(32, str(item.storeID))
+        
+        if isMisaligned:
+            sheet.row(i).set_style(easyxf('pattern: pattern solid, fore_color red'))
     
-    book.save(save_file)
+    try:
+        book.save(save_file)
+    except PermissionError:
+        messagebox.showerror(title= 'Error', message='Unable to save file')
 
     messagebox.showinfo(title='Success', message='Excel export created successfully.')
         
@@ -287,7 +296,7 @@ def generateIGUpdate(book, updateFile):
             itemProperties.append('"U"')
         else:
             itemProperties.append('"' + str(sheet.cell_value(row,1)) + '"')
-        itemProperties.append(str(sheet.cell_value(row,2)))
+        itemProperties.append(safeIntCast((sheet.cell_value(row,2))))
         previousIndex = 2
         for col in includeColumns:
             emptySpaces = col - previousIndex - 1
@@ -349,19 +358,83 @@ def runConversion():
         output = codecs.open(save_file, 'w+', 'latin-1')
         generateIGPriceUpdate(export, output)
 
-def hideButton():
-    thatButton.grid_remove()
+def convertToText():
+    print('simplifying to txt')
+    export = file_path
     
-def showButton():
-    thatButton.grid()
+    try:
+        preParse(export)
+    except UnicodeDecodeError:
+        with codecs.open(file_path, 'r', 'latin-1') as export:
+            preParse(export)
+    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
+    options = {}
+    options['title'] = 'Save As'
+    options['initialfile'] = str(os.path.abspath(file_path)) + fileParts[0] + '_simplified.txt'
+    options['filetypes'] = fileTypeFilters
+    save_file = saveFile(options)
+    if save_file:
+        generateSimpleExport(save_file, altered=truncate.get())
+
+def convertToExcelSimple():
+    print('simplifying to excel')
+    export = file_path
+    
+    try:
+        preParse(export)
+    except UnicodeDecodeError:
+        with codecs.open(file_path, 'r', 'latin-1') as export:
+            preParse(export)
+    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
+    options = {}
+    options['title'] = 'Save As'
+    options['initialfile'] = str(os.path.abspath(file_path)) + fileParts[0] + '_simplified.xls'
+    options['filetypes'] = fileTypeFilters
+    save_file = saveFile(options)
+    if save_file:
+        generateSimpleExcel(save_file, altered=truncate.get())
+
+def convertToExcelFull():
+    print('converting to excel')
+    export = file_path
+    
+    try:
+        preParse(export)
+    except UnicodeDecodeError:
+        with codecs.open(file_path, 'r', 'latin-1') as export:
+            preParse(export)
+    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
+    options = {}
+    options['title'] = 'Save As'
+    options['initialfile'] = str(os.path.abspath(file_path)) + fileParts[0] + '_complete.xls'
+    options['filetypes'] = fileTypeFilters
+    save_file = saveFile(options)
+    if save_file:
+        generateFullExcel(save_file, altered=truncate.get())
+    
+def safeIntCast(value):
+    try:
+        return str(int(value))
+    except ValueError:
+        global isMisaligned
+        isMisaligned = True
+        return str(value)
+    
+def hideButton(button):
+    button.grid_remove()
+
+def hideAllButtons():
+    thatButton.grid_remove()
+    simpleTxtButton.grid_remove()
+    simpleXlsButton.grid_remove()
+    fullXlsButton.grid_remove()
+    
+def showButton(button):
+    button.grid()
 
 root = Tk()
 root.option_add('*tearOff', FALSE)
 root.title("Agilysy File Tools")
-
-save_syserr = sys.stderr
-fsock = open('error.log', 'a+')
-sys.stderr = fsock
 
 openFileString = StringVar()
 conversionButtonText = StringVar()
@@ -389,12 +462,23 @@ ttk.Label(mainframe, text="Input File:").grid(column=1, row=1, sticky=(N, W, E))
 openFile_entry = ttk.Entry(mainframe, width=40, textvariable=openFileString)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
-global thatButton
+global thatButton, simpleTxtButton, simpleXlsButton, fullXlsButton
 thatButton = ttk.Button(mainframe, textvariable=conversionButtonText, command=runConversion)
 thatButton.grid(column=1, row=3)
+
+simpleTxtButton = ttk.Button(mainframe, text='Create txt', command=convertToText)
+simpleTxtButton.grid(column=1, row=4)
+
+simpleXlsButton = ttk.Button(mainframe, text='Create Prices xls', command=convertToExcelSimple)
+simpleXlsButton.grid(column=1, row=5)
+
+fullXlsButton = ttk.Button(mainframe, text='Create Full xls', command=convertToExcelFull)
+fullXlsButton.grid(column=1, row=6)
+
+simplifyButtons = [simpleTxtButton, simpleXlsButton, fullXlsButton]
 
 for child in mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
 
 root.config(menu=menubar)
-hideButton()
+hideAllButtons()
 root.mainloop()

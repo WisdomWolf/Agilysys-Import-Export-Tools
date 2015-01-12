@@ -1,6 +1,4 @@
 ###
 
-- Add separate function for writing to excel file?
 - Integrate Duplicate Barcode Search
 - Add Duplicate item (based on exact name duplication) search
-- Clean-up workflow to be more concise

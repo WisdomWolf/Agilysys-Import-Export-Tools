@@ -331,10 +331,11 @@ def runConversion():
         
     options = {}
     options['title'] = 'Save As'
-    options['initialfile'] = 'MI_IMP.txt'
+    options['initialfile'] = str(os.path.dirname(file_path)) + '/' + 'MI_IMP.txt'
     save_file = saveFile(options)
-    output = codecs.open(save_file, 'w+', 'latin-1')
-    generateIGPriceUpdate(export, output)
+    if save_file:
+        with codecs.open(save_file, 'w+', 'latin-1') as output:
+            generateIGPriceUpdate(export, output)
 
 def convertToText():
     print('simplifying to txt')

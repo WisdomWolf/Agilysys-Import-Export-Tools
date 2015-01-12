@@ -210,18 +210,18 @@ def generateFullExcel(save_file, items=None, altered=True):
         row.write(5, str(item.abbr2))
         row.write(6, str(item.printerLabel))
         row.write(7, str(item.priceLevels))
-        row.write(8, str(item.classID))
-        row.write(9, str(item.revCategoryID))
-        row.write(10, str(item.taxGroup))
-        row.write(11, str(item.securityLevel))
-        row.write(12, str(item.reportCategory))
+        row.write(8, safeIntCast(item.classID))
+        row.write(9, safeIntCast(item.revCategoryID))
+        row.write(10, safeIntCast(item.taxGroup))
+        row.write(11, safeIntCast(item.securityLevel))
+        row.write(12, safeIntCast(item.reportCategory))
         row.write(13, safeIntCast(item.useWeightFlag))
         row.write(14, str(item.weightTareAmount))
         row.write(15, str(item.sku))
         row.write(16, str(item.gunCode))
         row.write(17, str(item.costAmount))
         row.write(18, 'N/A')
-        row.write(19, str(item.pricePrompt))
+        row.write(19, safeIntCast(item.pricePrompt))
         row.write(20, safeIntCast(item.checkPrintFlag))
         row.write(21, safeIntCast(item.discountableFlag))
         row.write(22, safeIntCast(item.voidableFlag))
@@ -285,6 +285,7 @@ def generateIGUpdate(book, updateFile):
     print('preparing to generate IG Update file')
     sheet = book.sheet_by_index(0)
     includeColumns = set()
+    quotedFields = (3, 4, 5, 26)
     
     for col in range(3, sheet.ncols):
         if sheet.cell_value(1, col) == True:
@@ -302,7 +303,10 @@ def generateIGUpdate(book, updateFile):
             emptySpaces = col - previousIndex - 1
             for _ in range(emptySpaces):
                 itemProperties.append('')
-            itemProperties.append(str(sheet.cell_value(row,col)))
+            if col in quotedFields:
+                itemProperties.append('"' + str(sheet.cell_value(row,col)) + '"')
+            else:
+                itemProperties.append(safeIntCast(sheet.cell_value(row,col)))
             previousIndex = col
         if len(itemProperties) < 32:
             for _ in range(32 - len(itemProperties)):

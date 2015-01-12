@@ -329,34 +329,12 @@ def runConversion():
 
     export = file_path
         
-    if conversionButtonText.get() == "Simplify":
-        print('simplifying...')
-        try:
-            preParse(export)
-        except UnicodeDecodeError:
-            with codecs.open(file_path, 'r', 'latin-1') as export:
-                preParse(export)
-        fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
-        options = {}
-        options['title'] = 'Save As'
-        options['initialfile'] = fileParts[0] + "_simplified." + fileParts[1]
-        options['filetypes'] = fileTypeFilters
-        save_file = saveFile(options)
-        if save_file:
-            sFileParts = str(os.path.basename(save_file)).rsplit('.', maxsplit=1)
-            if (sFileParts[1] == 'xls' or sFileParts == 'xlsx') and includeExcel.get():
-                generateFullExcel(save_file, altered=truncate.get())
-            elif includeExcel.get() == False:
-                generateSimpleExcel(save_file, altered=truncate.get())
-            else:
-                generateSimpleExport(save_file, altered=truncate.get())
-    else:
-        options = {}
-        options['title'] = 'Save As'
-        options['initialfile'] = 'MI_IMP.txt'
-        save_file = saveFile(options)
-        output = codecs.open(save_file, 'w+', 'latin-1')
-        generateIGPriceUpdate(export, output)
+    options = {}
+    options['title'] = 'Save As'
+    options['initialfile'] = 'MI_IMP.txt'
+    save_file = saveFile(options)
+    output = codecs.open(save_file, 'w+', 'latin-1')
+    generateIGPriceUpdate(export, output)
 
 def convertToText():
     print('simplifying to txt')
@@ -370,7 +348,7 @@ def convertToText():
     fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
     options = {}
     options['title'] = 'Save As'
-    options['initialfile'] = str(os.path.abspath(file_path)) + fileParts[0] + '_simplified.txt'
+    options['initialfile'] = str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_simplified.txt'
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
@@ -388,7 +366,7 @@ def convertToExcelSimple():
     fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
     options = {}
     options['title'] = 'Save As'
-    options['initialfile'] = str(os.path.abspath(file_path)) + fileParts[0] + '_simplified.xls'
+    options['initialfile'] = str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_simplified.xls'
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
@@ -406,7 +384,7 @@ def convertToExcelFull():
     fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
     options = {}
     options['title'] = 'Save As'
-    options['initialfile'] = str(os.path.abspath(file_path)) + fileParts[0] + '_complete.xls'
+    options['initialfile'] = str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_complete.xls'
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:

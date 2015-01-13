@@ -270,7 +270,7 @@ def generateIGPriceUpdate(inputFile, updateFile):
                 line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(sheet.cell_value(row,2)) + ',,,,,,,,,,,,,,,,,\r\n'
     else:
         print('generating IG Update from txt or csv')
-        with codecs.open(file_path, 'r', 'utf8') as file:
+        with codecs.open(file_path, 'r', 'latin-1') as file:
             for x in file:
                 details = x.split(",")
                 details[2] = details[2].replace(";", ",").strip("\r\n")

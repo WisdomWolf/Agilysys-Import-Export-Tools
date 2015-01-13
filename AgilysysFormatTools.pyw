@@ -3,7 +3,6 @@
 import os
 import sys
 import re
-import csv
 import codecs
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
@@ -40,11 +39,9 @@ def openFile(options=None):
         return
     try:
         if determineExportType(file_path) == IG_EXPORT:
-            conversionButtonText.set("Simplify")
             for button in simplifyButtons:
                 showButton(button)
         else:
-            conversionButtonText.set("Generate IG Update")
             showButton(thatButton)
         openFileString.set(str(os.path.basename(file_path)))
     except IOError:
@@ -237,7 +234,8 @@ def generateFullExcel(save_file, items=None, altered=True):
         row.write(32, str(item.storeID))
         
         if isMisaligned:
-            sheet.row(i).set_style(easyxf('pattern: pattern solid, fore_color red'))
+            oopsStyle = (easyxf('pattern: pattern solid, fore_color rose'))
+            row.write(1, 'X', oopsStyle)
     
     try:
         book.save(save_file)
@@ -415,26 +413,30 @@ def hideAllButtons():
 def showButton(button):
     button.grid()
 
+def displayAbout():
+    messagebox.showinfo(title='About', message='v0.1.13')
+
 root = Tk()
 root.option_add('*tearOff', FALSE)
-root.title("Agilysy File Tools")
+root.title("Agilysys File Tools")
 
 openFileString = StringVar()
-conversionButtonText = StringVar()
-truncate = StringVar()
-includeExcel = StringVar()
+truncate = BooleanVar()
 
 menubar = Menu(root)
 menu_file = Menu(menubar)
 menu_options = Menu(menubar)
+menu_help = Menu(menubar)
 menubar.add_cascade(menu=menu_file, label='File')
 menubar.add_cascade(menu=menu_options, label='Options')
+menubar.add_cascade(menu=menu_help, label='Help')
 
 menu_file.add_command(label='Open...', command=openFile)
 menu_file.add_command(label='Close', command=root.quit)
 
 menu_options.add_checkbutton(label='Condense Simplified Output', variable=truncate, onvalue=1, offvalue=0)
-menu_options.add_checkbutton(label='Generate Complete Excel Export', variable=includeExcel, onvalue=1, offvalue=0)
+
+menu_help.add_command(label='About', command=displayAbout)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=1, sticky=(N, W, E, S))
@@ -446,7 +448,7 @@ openFile_entry = ttk.Entry(mainframe, width=40, textvariable=openFileString)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
 global thatButton, simpleTxtButton, simpleXlsButton, fullXlsButton
-thatButton = ttk.Button(mainframe, textvariable=conversionButtonText, command=runConversion)
+thatButton = ttk.Button(mainframe, text='Generate IG Update', command=runConversion)
 thatButton.grid(column=1, row=3)
 
 simpleTxtButton = ttk.Button(mainframe, text='Create txt', command=convertToText)

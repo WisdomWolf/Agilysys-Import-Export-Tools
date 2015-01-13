@@ -291,8 +291,13 @@ def generateIGUpdate(book, updateFile):
             
     for row in range(2, sheet.nrows):
         itemProperties = []
-        if sheet.cell_value(row,1) != 'A' and sheet.cell_value(row,1) != 'U' and sheet.cell_value(row,1) != 'D':
+        updateType = sheet.cell_value(row,1)
+        if updateType != 'A' and updateType != 'U' and updateType != 'D' and updateType != 'X':
             itemProperties.append('"U"')
+        elif updateType == 'X':
+            messagebox.showwarning(title='File Error', 
+                message='One or more lines are not aligned properly.\nPlease correct and retry.')
+            return
         else:
             itemProperties.append('"' + str(sheet.cell_value(row,1)) + '"')
         itemProperties.append(safeIntCast((sheet.cell_value(row,2))))

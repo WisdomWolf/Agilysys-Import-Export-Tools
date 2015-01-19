@@ -4,6 +4,7 @@ import os
 import sys
 import re
 import codecs
+import pdb
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
 from Things import MenuItemThings

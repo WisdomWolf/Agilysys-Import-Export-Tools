@@ -12,7 +12,7 @@ from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
-commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]+(?="))')
+commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
 fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'), ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 IG_EXPORT = 1
 SIMPLE_EXPORT = 3

@@ -12,6 +12,7 @@ from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
+commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]+(?="))')
 fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'), ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 IG_EXPORT = 1
 SIMPLE_EXPORT = 3
@@ -58,15 +59,16 @@ def saveFile(options):
         print("No file selected")
     return save_file
         
-def fixArray(match):
+def fixArray(match,):
     match = str(match.group(0))
-    return match.replace(",",";")
+    return match.replace(",", ";")
     
 def preParse(file_name):
     with codecs.open(file_name, 'r', 'latin-1') as export:
         print('pre-parse initiated')
         for line in export:
             itemDetails = re.sub(priceArrayMatch, fixArray, line)
+            itemDetails = re.sub(commaQuoteMatch, fixArray, itemDetails)
             item = itemDetails.split(",")
             i = MenuItemThings.MenuItem(
                                     item[1], item[2], item[3], item[4], item[5],

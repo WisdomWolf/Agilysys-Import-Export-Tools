@@ -287,10 +287,13 @@ def generateIGUpdate(book, updateFile):
     sheet = book.sheet_by_index(0)
     includeColumns = set()
     quotedFields = (3, 4, 5, 26)
+    pdb.set_trace()
     
     for col in range(3, sheet.ncols):
         if sheet.cell_value(1, col) == True:
             includeColumns.add(col)
+            
+    includeColumns = sorted(includeColumns)
             
     for row in range(2, sheet.nrows):
         itemProperties = []
@@ -422,7 +425,7 @@ def showButton(button):
     button.grid()
 
 def displayAbout():
-    messagebox.showinfo(title='About', message='v0.1.13')
+    messagebox.showinfo(title='About', message='v0.1.28')
 
 root = Tk()
 root.option_add('*tearOff', FALSE)

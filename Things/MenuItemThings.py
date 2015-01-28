@@ -3,14 +3,14 @@
 class MenuItem:
 	"""An object to simplify item property assignment"""
 	def __init__(
-				self, itemID, name, abbr1, abbr2, printLabel, priceLevels,
-				classID, revCategoryID, taxGroup, securityLevel,
-				reportCategory, useWeightFlag, weightTareAmount, sku,
-				gunCode, costAmount, pricePrompt, checkPrintFlag,
-				discountableFlag, voidableFlag, inactiveFlag,
-				taxIncludeFlag, itemGroupID, receiptText,
-				priceOverrideFlag, choiceGroups, kitchenPrinters, covers,
-				storeID, original="unknown", parsed="unknown"
+				self, itemID, name, abbr1=None, abbr2=None, printLabel=None, priceLevels=None,
+				classID=None, revCategoryID=None, taxGroup=None, securityLevel=0,
+				reportCategory=None, useWeightFlag=None, weightTareAmount=None, sku=None,
+				gunCode=None, costAmount=None, pricePrompt=0, checkPrintFlag=1,
+				discountableFlag=1, voidableFlag=1, inactiveFlag=0,
+				taxIncludeFlag=0, itemGroupID=None, receiptText=None,
+				priceOverrideFlag=1, choiceGroups=None, kitchenPrinters=None, covers=0,
+				storeID=0
 				):
 		self.id = itemID #seq 2
 		self.name = name #seq 3
@@ -41,8 +41,6 @@ class MenuItem:
 		self.kitchenPrinters = kitchenPrinters #"""array in seq 30"""
 		self.covers = covers #"""seq 31"""
 		self.storeID = storeID #"""seq 32"""
-		self.original = original
-		self.parsed = parsed
 
 	def printItemDetails(self):
 		for k,v in self.__dict__.items():

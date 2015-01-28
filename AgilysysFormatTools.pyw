@@ -430,6 +430,7 @@ def displayAbout():
 root = Tk()
 root.option_add('*tearOff', FALSE)
 root.title("Agilysys File Tools")
+root.iconbitmap(default='Format_Gears.ico')
 
 openFileString = StringVar()
 truncate = BooleanVar()

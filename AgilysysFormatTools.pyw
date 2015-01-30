@@ -262,7 +262,9 @@ def generateIGPriceUpdate(inputFile, updateFile):
                 prices = []
                 for col in range(2, sheet.ncols):
                     if sheet.cell_value(row,col) != '':
-                        priceLevel = str(col - 1) + ',' + str(sheet.cell_value(row,col))
+                        priceLevelNumber = str(col - 1) + ','
+                        price = '{0:.2f}'.format(float(str(sheet.cell_value(row,col)).strip('$')))
+                        priceLevel = priceLevelNumber + '$' + price
                         prices.append(priceLevel)
                 priceImport = '{' + ','.join(prices) + '}'
                 line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(priceImport) + ',,,,,,,,,,,,,,,,,\r\n'

@@ -85,8 +85,10 @@ def preParse(file_name):
 def enumeratePriceLevels():
     numberOfPriceLevels = 0
     for item in itemList:
-        if len(item.separatePriceLevels()) > numberOfPriceLevels:
-            numberOfPriceLevels = len(item.separatePriceLevels())
+        keys = item.separatePriceLevels().keys()
+        for k in keys:
+            if int(k) > numberOfPriceLevels:
+                numberOfPriceLevels = int(k)
     return numberOfPriceLevels
 
 def generateSimpleExport(save_file, items=None, altered=True):
@@ -289,7 +291,6 @@ def generateIGUpdate(book, updateFile):
     sheet = book.sheet_by_index(0)
     includeColumns = set()
     quotedFields = (3, 4, 5, 26)
-    pdb.set_trace()
     
     for col in range(3, sheet.ncols):
         if sheet.cell_value(1, col) == True:
@@ -427,13 +428,16 @@ def showButton(button):
     button.grid()
 
 def displayAbout():
-    messagebox.showinfo(title='About', message='v0.1.28')
+    messagebox.showinfo(title='About', message='v0.2.27')
 
 root = Tk()
 root.option_add('*tearOff', FALSE)
 root.title("Agilysys File Tools")
-root.iconbitmap(default='Format_Gears.ico')
-
+try:
+    root.iconbitmap(default='Format_Gears.ico')
+except TclError:
+    print('Unable to locate icon')
+    
 openFileString = StringVar()
 truncate = BooleanVar()
 

@@ -434,7 +434,7 @@ def showButton(button):
     button.grid()
 
 def displayAbout():
-    messagebox.showinfo(title='About', message='v0.2.27')
+    messagebox.showinfo(title='About', message='v0.3.16')
 
 root = Tk()
 root.option_add('*tearOff', FALSE)

@@ -1,4 +1,4 @@
-#! python3
+#!python3
 
 import os
 import sys
@@ -135,7 +135,7 @@ def generateSimpleExcel(save_file, items=None, altered=True):
         else:
             row = sheet.row(i)
             row.write(0, str(item.id))
-            row.write(1, str(item.name))
+            row.write(1, str(item.name).strip('"'))
             for p in range(1, (numberOfPriceLevels + 1)):
                 if p in item.separatePriceLevels():
                     price = item.separatePriceLevels()[p]
@@ -308,7 +308,7 @@ def generateIGUpdate(book, updateFile):
         itemProperties = []
         updateType = sheet.cell_value(row,1)
         if updateType != 'A' and updateType != 'U' and updateType != 'D' and updateType != 'X':
-            itemProperties.append('"U"')
+            continue
         elif updateType == 'X':
             messagebox.showwarning(title='File Error', 
                 message='One or more lines are not aligned properly.\nPlease correct and retry.')

@@ -91,13 +91,13 @@ def enumeratePriceLevels():
                 numberOfPriceLevels = int(k)
     return numberOfPriceLevels
 
-def generateSimpleExport(save_file, items=None, altered=True):
+def generateSimpleExport(save_file, items=None, excludeUnpriced=True):
     items = items or itemList
     print('Generating Simple Export')
     simpleOutput = codecs.open(save_file, 'w+', 'utf8')
     
     for item in items:
-        if altered:
+        if excludeUnpriced:
             if item.priceLevels != "{}":
                 simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
         else:
@@ -105,7 +105,7 @@ def generateSimpleExport(save_file, items=None, altered=True):
         
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
 
-def generateSimpleExcel(save_file, items=None, altered=True):
+def generateSimpleExcel(save_file, items=None, excludeUnpriced=True):
     items = items or itemList
     print('Generating Simple Excel')
     
@@ -123,13 +123,16 @@ def generateSimpleExcel(save_file, items=None, altered=True):
     row1.write(1, 'Name', heading)
     
     numberOfPriceLevels = enumeratePriceLevels()
-    for x in range(numberOfPriceLevels):
-        col = x + 2
-        row1.write(col, 'Price Level ' + str(x + 1), heading)
+    
+    #Write Column Headings
+    for x in range(1, (numberOfPriceLevels + 1)):
+        col = x + 1
+        row1.write(col, 'Price Level ' + str(x), heading)
         sheet.col(col).width = 4260
     
+    #Write items
     for i,item in zip(range(1, len(items) + 1),items):
-        if altered:
+        if excludeUnpriced:
             if item.priceLevels == "{}":
                 continue
         else:
@@ -148,7 +151,7 @@ def generateSimpleExcel(save_file, items=None, altered=True):
         
     messagebox.showinfo(title='Success', message='Simplified excel sheet created successfully.')
             
-def generateFullExcel(save_file, items=None, altered=True):
+def generateFullExcel(save_file, items=None, excludeUnpriced=True):
     items = items or itemList
     print('preparing to convert to Excel')
     book = Workbook()
@@ -163,43 +166,22 @@ def generateFullExcel(save_file, items=None, altered=True):
     row1 = sheet.row(0)
     row1.write(0, '0', heading)
     sheet.col(0).hidden = True
-    row1.write(1, '"U"', heading)
-    row1.write(2, 'ID', heading)
-    row1.write(3, 'Name', heading)
-    row1.write(4, 'Abbr1', heading)
-    row1.write(5, 'Abbr2', heading)
-    row1.write(6, 'Kitchen Printer Label', heading)
-    row1.write(7, 'Price(s)', heading)
-    row1.write(8, 'Product Class ID', heading)
-    row1.write(9, 'Revenue Category ID', heading)
-    row1.write(10, 'Tax Group ID', heading)
-    row1.write(11, 'Security Level ID', heading)
-    row1.write(12, 'Report Category ID', heading)
-    row1.write(13, 'Use Weight Flagh', heading)
-    row1.write(14, 'Weight Tare Amount', heading)
-    row1.write(15, 'SKU Number', heading)
-    row1.write(16, 'Bar Gun Code', heading)
-    row1.write(17, 'Cost Amount', heading)
-    row1.write(18, 'Reserved', heading)
-    row1.write(19, 'Prompt for Price Flag', heading)
-    row1.write(20, 'Print on Check Flag', heading)
-    row1.write(21, 'Discountable Flag', heading)
-    row1.write(22, 'Voidable Flag', heading)
-    row1.write(23, 'Not Active Flag', heading)
-    row1.write(24, 'Tax Included Flag', heading)
-    row1.write(25, 'Menu Item Group ID', heading)
-    row1.write(26, 'Customer Receipt Text', heading)
-    row1.write(27, 'Allow Price Override Flag', heading)
-    row1.write(28, 'Reserved', heading)
-    row1.write(29, 'Choice Groups', heading)
-    row1.write(30, 'Kitchen Printers (Logical)', heading)
-    row1.write(31, 'Covers', heading)
-    row1.write(32, 'Store ID', heading)
-    for i in range(3, 32):
-        sheet.row(1).set_cell_boolean(i, False)
-    sheet.row(1).set_cell_boolean(1, True)
-    sheet.row(1).set_cell_boolean(2, True)
+    headers = ['"U"', 'ID', 'Name', 'Abbr1', 'Abbr2',
+               'Kitchen Printer Label', 'Price', 'Product Class',
+               'Revenue Category', 'Tax Group', 'Security Level',
+               'Report Category', 'Use Weight', 'Tare', 'SKU',
+               'Bar Gun Code', 'Cost', 'Reserved', 'Price Prompt',
+               'Print on Check', 'Discountable', 'Voidable', 'Not Active',
+               'Tax Included', 'Menu Item Group', 'Receipt',
+               'Price Override', 'Reserved', 'Choice Groups', 'KPs',
+               'Covers', 'Store ID']
     
+    for h,i in zip(headers, range(1,32)):
+        if i < 3:
+            sheet.row(1).set_cell_boolean(i, True)
+        else:
+            sheet.row(1).set_cell_boolean(i, False)
+        row1.write(i, h, heading)
     
     for i,item in zip(range(2, len(items) + 2),items):
         global isMisaligned
@@ -249,6 +231,9 @@ def generateFullExcel(save_file, items=None, altered=True):
 
     messagebox.showinfo(title='Success', message='Excel export created successfully.')
         
+def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
+    pass
+    
 def generateIGPriceUpdate(inputFile, updateFile):
     print('preparing to generate IG Price Update file')
     if inputFile[-3:] == 'xls' or inputFile[-4:] == 'xlsx':
@@ -375,7 +360,7 @@ def convertToText():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateSimpleExport(save_file, altered=truncate.get())
+        generateSimpleExport(save_file, excludeUnpriced=truncate.get())
 
 def convertToExcelSimple():
     print('simplifying to excel')
@@ -393,7 +378,7 @@ def convertToExcelSimple():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateSimpleExcel(save_file, altered=truncate.get())
+        generateSimpleExcel(save_file, excludeUnpriced=truncate.get())
 
 def convertToExcelFull():
     print('converting to excel')
@@ -411,7 +396,10 @@ def convertToExcelFull():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateFullExcel(save_file, altered=truncate.get())
+        generateFullExcel(save_file, excludeUnpriced=truncate.get())
+
+def separatePriceLevels():
+    pass
     
 def safeIntCast(value):
     try:
@@ -458,7 +446,7 @@ menubar.add_cascade(menu=menu_help, label='Help')
 menu_file.add_command(label='Open...', command=openFile)
 menu_file.add_command(label='Close', command=root.quit)
 
-menu_options.add_checkbutton(label='Condense Simplified Output', variable=truncate, onvalue=1, offvalue=0)
+menu_options.add_checkbutton(label='Remove Unpriced items', variable=truncate, onvalue=1, offvalue=0)
 
 menu_help.add_command(label='About', command=displayAbout)
 

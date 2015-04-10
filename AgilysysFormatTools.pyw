@@ -7,7 +7,7 @@ import codecs
 import pdb
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
-from Things import MenuItemThings
+from Things.MenuItemThings import MenuItem
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
@@ -70,7 +70,7 @@ def preParse(file_name):
             itemDetails = re.sub(priceArrayMatch, fixArray, line)
             itemDetails = re.sub(commaQuoteMatch, fixArray, itemDetails)
             item = itemDetails.split(",")
-            i = MenuItemThings.MenuItem(
+            i = MenuItem(
                                     item[1], item[2], item[3], item[4], item[5],
                                     item[6], item[7], item[8], item[9], item[10],
                                     item[11], item[12], item[13], item[14], item[15],
@@ -151,7 +151,7 @@ def generateSimpleExcel(save_file, items=None, excludeUnpriced=True):
         
     messagebox.showinfo(title='Success', message='Simplified excel sheet created successfully.')
             
-def generateFullExcel(save_file, items=None, excludeUnpriced=True):
+def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLevels=False):
     items = items or itemList
     print('preparing to convert to Excel')
     book = Workbook()
@@ -186,39 +186,45 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True):
     for i,item in zip(range(2, len(items) + 2),items):
         global isMisaligned
         isMisaligned = False
+        columnMap = MenuItem.attributeMap
         
         row = sheet.row(i)
-        row.write(2, int(item.id))
-        row.write(3, str(item.name))
-        row.write(4, str(item.abbr1))
-        row.write(5, str(item.abbr2))
-        row.write(6, str(item.printerLabel))
-        row.write(7, str(item.priceLevels))
-        row.write(8, safeIntCast(item.classID))
-        row.write(9, safeIntCast(item.revCategoryID))
-        row.write(10, safeIntCast(item.taxGroup))
-        row.write(11, safeIntCast(item.securityLevel))
-        row.write(12, safeIntCast(item.reportCategory))
-        row.write(13, safeIntCast(item.useWeightFlag))
-        row.write(14, str(item.weightTareAmount))
-        row.write(15, str(item.sku))
-        row.write(16, str(item.gunCode))
-        row.write(17, str(item.costAmount))
-        row.write(18, 'N/A')
-        row.write(19, safeIntCast(item.pricePrompt))
-        row.write(20, safeIntCast(item.checkPrintFlag))
-        row.write(21, safeIntCast(item.discountableFlag))
-        row.write(22, safeIntCast(item.voidableFlag))
-        row.write(23, safeIntCast(item.inactiveFlag))
-        row.write(24, safeIntCast(item.taxIncludeFlag))
-        row.write(25, safeIntCast(item.itemGroupID))
-        row.write(26, str(item.receiptText))
-        row.write(27, safeIntCast(item.priceOverrideFlag))
-        row.write(28, 'N/A')
-        row.write(29, str(item.choiceGroups))
-        row.write(30, str(item.kitchenPrinters))
-        row.write(31, str(item.covers))
-        row.write(32, str(item.storeID))
+        #row.write(2, int(item.id))
+        row.write(columnMap['id'], int(item.id))
+        row.write(columnMap['name'], str(item.name))
+        row.write(columnMap['abbr1'], str(item.abbr1))
+        row.write(columnMap['abbr2'], str(item.abbr2))
+        row.write(columnMap['printerLabel'], str(item.printerLabel))
+        
+        if expandPriceLevels:
+            pass
+        else:
+            row.write(columnMap['priceLevels'], str(item.priceLevels))
+            row.write(columnMap['classID'], safeIntCast(item.classID))
+            row.write(columnMap['revCategoryID'], safeIntCast(item.revCategoryID))
+            row.write(columnMap['taxGroup'], safeIntCast(item.taxGroup))
+            row.write(columnMap['securityLevel'], safeIntCast(item.securityLevel))
+            row.write(columnMap['reportCategory'], safeIntCast(item.reportCategory))
+            row.write(columnMap['useWeightFlag'], safeIntCast(item.useWeightFlag))
+            row.write(columnMap['weightTareAmount'], str(item.weightTareAmount))
+            row.write(columnMap['sku'], str(item.sku))
+            row.write(columnMap['gunCode'], str(item.gunCode))
+            row.write(columnMap['costAmount'], str(item.costAmount))
+            row.write(columnMap['costAmount'] + 1, 'N/A')
+            row.write(columnMap['pricePrompt'], safeIntCast(item.pricePrompt))
+            row.write(columnMap['checkPrintFlag'], safeIntCast(item.checkPrintFlag))
+            row.write(columnMap['discountableFlag'], safeIntCast(item.discountableFlag))
+            row.write(columnMap['voidableFlag'], safeIntCast(item.voidableFlag))
+            row.write(columnMap['inactiveFlag'], safeIntCast(item.inactiveFlag))
+            row.write(columnMap['taxIncludeFlag'], safeIntCast(item.taxIncludeFlag))
+            row.write(columnMap['itemGroupID'], safeIntCast(item.itemGroupID))
+            row.write(columnMap['receiptText'], str(item.receiptText))
+            row.write(columnMap['priceOverrideFlag'], safeIntCast(item.priceOverrideFlag))
+            row.write(columnMap['priceOverrideFlag'] + 1, 'N/A')
+            row.write(columnMap['choiceGroups'], str(item.choiceGroups))
+            row.write(columnMap['kitchenPrinters'], str(item.kitchenPrinters))
+            row.write(columnMap['covers'], str(item.covers))
+            row.write(columnMap['storeID'], str(item.storeID))
         
         if isMisaligned:
             oopsStyle = (easyxf('pattern: pattern solid, fore_color rose'))
@@ -360,7 +366,7 @@ def convertToText():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateSimpleExport(save_file, excludeUnpriced=truncate.get())
+        generateSimpleExport(save_file, excludeUnpriced=noUnpriced.get())
 
 def convertToExcelSimple():
     print('simplifying to excel')
@@ -378,7 +384,7 @@ def convertToExcelSimple():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateSimpleExcel(save_file, excludeUnpriced=truncate.get())
+        generateSimpleExcel(save_file, excludeUnpriced=noUnpriced.get())
 
 def convertToExcelFull():
     print('converting to excel')
@@ -396,7 +402,7 @@ def convertToExcelFull():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateFullExcel(save_file, excludeUnpriced=truncate.get())
+        generateFullExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
 
 def separatePriceLevels():
     pass
@@ -433,7 +439,8 @@ except TclError:
     print('Unable to locate icon')
     
 openFileString = StringVar()
-truncate = BooleanVar()
+noUnpriced = BooleanVar()
+expandPriceLevels = BooleanVar()
 
 menubar = Menu(root)
 menu_file = Menu(menubar)
@@ -446,7 +453,8 @@ menubar.add_cascade(menu=menu_help, label='Help')
 menu_file.add_command(label='Open...', command=openFile)
 menu_file.add_command(label='Close', command=root.quit)
 
-menu_options.add_checkbutton(label='Remove Unpriced items', variable=truncate, onvalue=1, offvalue=0)
+menu_options.add_checkbutton(label='Remove Unpriced Items', variable=noUnpriced, onvalue=1, offvalue=0)
+menu_options.add_checkbutton(label='Separate Price Level', variable=expandPriceLevels, onvalue=1, offvalue=0)
 
 menu_help.add_command(label='About', command=displayAbout)
 

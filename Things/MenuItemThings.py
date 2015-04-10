@@ -6,6 +6,19 @@ quoteMatch = re.compile(r'(^"+|"+$)')
 
 class MenuItem:
     """An object to simplify item property assignment"""
+    
+    attributeMap = {'id':2, 'name':3, 'abbr1':4, 'abbr2':5,
+                     'printerLabel':6, 'priceLevels':7, 'classID':8,
+                     'revCategoryID':9, 'taxGroup':10, 'securityLevel':11,
+                     'reportCategory':12, 'useWeightFlag':13,
+                     'weightTareAmount':14, 'sku':15, 'gunCode':16,
+                     'costAmount':17, 'pricePrompt':19, 'checkPrintFlag':20,
+                     'discountableFlag':21, 'voidableFlag':22,
+                     'inactiveFlag':23, 'taxIncludeFlag':24,
+                     'itemGroupID':25, 'receiptText':26,
+                     'priceOverrideFlag':27, 'choiceGroups':29,
+                     'kitchenPrinters':30, 'covers':31, 'storeID':32}
+    
     def __init__(
                 self, itemID, name, abbr1=None, abbr2=None, printLabel=None, priceLevels=None,
                 classID=None, revCategoryID=None, taxGroup=None, securityLevel=0,
@@ -16,6 +29,7 @@ class MenuItem:
                 priceOverrideFlag=1, choiceGroups=None, kitchenPrinters=None, covers=0,
                 storeID=0
                 ):
+        
         self.id = itemID #seq 2
         self.name = re.sub(quoteMatch, removeQuotes, name) #seq 3
         self.abbr1 = abbr1 #"""seq 4"""
@@ -45,6 +59,7 @@ class MenuItem:
         self.kitchenPrinters = kitchenPrinters #"""array in seq 30"""
         self.covers = covers #"""seq 31"""
         self.storeID = storeID #"""seq 32"""
+        
 
     def printItemDetails(self):
         for k,v in self.__dict__.items():

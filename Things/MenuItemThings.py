@@ -17,10 +17,7 @@ class MenuItem:
                 storeID=0
                 ):
         self.id = itemID #seq 2
-        input('Name: ' + name)
-        name = re.sub(quoteMatch, removeQuotes, name)
-        input('Adjusted Name: ' + name)
-        self.name = name
+        self.name = re.sub(quoteMatch, removeQuotes, name) #seq 3
         self.abbr1 = abbr1 #"""seq 4"""
         self.abbr2 = abbr2 #"""seq 5""""
         self.printerLabel = printLabel #"""seq 6"""

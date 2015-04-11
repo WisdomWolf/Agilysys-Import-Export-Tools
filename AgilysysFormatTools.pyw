@@ -25,6 +25,7 @@ def ezPrint(string):
     print(str(string))
     
 def openFile(options=None):
+    hideAllButtons()
     if itemList:
         itemList.clear()
     if options == None:
@@ -98,10 +99,10 @@ def generateSimpleExport(save_file, items=None, excludeUnpriced=True):
     
     for item in items:
         if excludeUnpriced:
-            if item.priceLevels != "{}":
-                simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
+            if item.priceLvls != "{}":
+                simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLvls) + "\r\n")
         else:
-            simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLevels) + "\r\n")
+            simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLvls) + "\r\n")
         
     messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
 
@@ -133,7 +134,7 @@ def generateSimpleExcel(save_file, items=None, excludeUnpriced=True):
     #Write items
     for i,item in zip(range(1, len(items) + 1),items):
         if excludeUnpriced:
-            if item.priceLevels == "{}":
+            if item.priceLvls == "{}":
                 continue
         else:
             row = sheet.row(i)
@@ -176,7 +177,20 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLe
                'Price Override', 'Reserved', 'Choice Groups', 'KPs',
                'Covers', 'Store ID']
     
-    for h,i in zip(headers, range(1,32)):
+    if expandPriceLevels:
+        startHeaders = headers[:6]
+        endHeaders = headers[7:]
+        headers.clear()
+        priceHeaders = []
+        numberOfPriceLevels = enumeratePriceLevels()
+        
+        for x in range(0, (numberOfPriceLevels)):
+            priceHeaders.append('Price Level ' + str(x + 1))
+            #sheet.col(x + 1).width = 4260
+            
+        headers = startHeaders + priceHeaders + endHeaders
+        
+    for h,i in zip(headers, range(1,len(headers))):
         if i < 3:
             sheet.row(1).set_cell_boolean(i, True)
         else:
@@ -197,32 +211,63 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLe
         row.write(columnMap['printerLabel'], str(item.printerLabel))
         
         if expandPriceLevels:
-            pass
+            for p in range(1, (numberOfPriceLevels + 1)):
+                if p in item.separatePriceLevels():
+                    price = item.separatePriceLevels()[p]
+                else:
+                    price = ''
+                r = p - 1
+                row.write(columnMap['priceLvls'] + r, str(price))
+            row.write(columnMap['classID'] + (numberOfPriceLevels - 1), safeIntCast(item.classID))
+            row.write(columnMap['revCat'] + (numberOfPriceLevels - 1), safeIntCast(item.revCat))
+            row.write(columnMap['taxGrp'] + (numberOfPriceLevels - 1), safeIntCast(item.taxGrp))
+            row.write(columnMap['securityLvl'] + (numberOfPriceLevels - 1), safeIntCast(item.securityLvl))
+            row.write(columnMap['reportCat'] + (numberOfPriceLevels - 1), safeIntCast(item.reportCat))
+            row.write(columnMap['byWeight'] + (numberOfPriceLevels - 1), safeIntCast(item.byWeight))
+            row.write(columnMap['tare'] + (numberOfPriceLevels - 1), str(item.tare))
+            row.write(columnMap['sku'] + (numberOfPriceLevels - 1), str(item.sku))
+            row.write(columnMap['gunCode'] + (numberOfPriceLevels - 1), str(item.gunCode))
+            row.write(columnMap['cost'] + (numberOfPriceLevels - 1), str(item.cost))
+            row.write(columnMap['cost'] + (numberOfPriceLevels), 'N/A')
+            row.write(columnMap['pricePrompt'] + (numberOfPriceLevels - 1), safeIntCast(item.pricePrompt))
+            row.write(columnMap['prntOnChk'] + (numberOfPriceLevels - 1), safeIntCast(item.prntOnChk))
+            row.write(columnMap['disc'] + (numberOfPriceLevels - 1), safeIntCast(item.disc))
+            row.write(columnMap['voidable'] + (numberOfPriceLevels - 1), safeIntCast(item.voidable))
+            row.write(columnMap['inactive'] + (numberOfPriceLevels - 1), safeIntCast(item.inactive))
+            row.write(columnMap['taxIncluded'] + (numberOfPriceLevels - 1), safeIntCast(item.taxIncluded))
+            row.write(columnMap['itemGrp'] + (numberOfPriceLevels - 1), safeIntCast(item.itemGrp))
+            row.write(columnMap['receipt'] + (numberOfPriceLevels - 1), str(item.receipt))
+            row.write(columnMap['priceOver'] + (numberOfPriceLevels - 1), safeIntCast(item.priceOver))
+            row.write(columnMap['priceOver'] + (numberOfPriceLevels), 'N/A')
+            row.write(columnMap['choiceGrps'] + (numberOfPriceLevels - 1), str(item.choiceGrps))
+            row.write(columnMap['ktchnPrint'] + (numberOfPriceLevels - 1), str(item.ktchnPrint))
+            row.write(columnMap['covers'] + (numberOfPriceLevels - 1), str(item.covers))
+            row.write(columnMap['storeID'] + (numberOfPriceLevels - 1), str(item.storeID))
         else:
-            row.write(columnMap['priceLevels'], str(item.priceLevels))
+            row.write(columnMap['priceLvls'], str(item.priceLvls))
             row.write(columnMap['classID'], safeIntCast(item.classID))
-            row.write(columnMap['revCategoryID'], safeIntCast(item.revCategoryID))
-            row.write(columnMap['taxGroup'], safeIntCast(item.taxGroup))
-            row.write(columnMap['securityLevel'], safeIntCast(item.securityLevel))
-            row.write(columnMap['reportCategory'], safeIntCast(item.reportCategory))
-            row.write(columnMap['useWeightFlag'], safeIntCast(item.useWeightFlag))
-            row.write(columnMap['weightTareAmount'], str(item.weightTareAmount))
+            row.write(columnMap['revCat'], safeIntCast(item.revCat))
+            row.write(columnMap['taxGrp'], safeIntCast(item.taxGrp))
+            row.write(columnMap['securityLvl'], safeIntCast(item.securityLvl))
+            row.write(columnMap['reportCat'], safeIntCast(item.reportCat))
+            row.write(columnMap['byWeight'], safeIntCast(item.byWeight))
+            row.write(columnMap['tare'], str(item.tare))
             row.write(columnMap['sku'], str(item.sku))
             row.write(columnMap['gunCode'], str(item.gunCode))
-            row.write(columnMap['costAmount'], str(item.costAmount))
-            row.write(columnMap['costAmount'] + 1, 'N/A')
+            row.write(columnMap['cost'], str(item.cost))
+            row.write(columnMap['cost'] + 1, 'N/A')
             row.write(columnMap['pricePrompt'], safeIntCast(item.pricePrompt))
-            row.write(columnMap['checkPrintFlag'], safeIntCast(item.checkPrintFlag))
-            row.write(columnMap['discountableFlag'], safeIntCast(item.discountableFlag))
-            row.write(columnMap['voidableFlag'], safeIntCast(item.voidableFlag))
-            row.write(columnMap['inactiveFlag'], safeIntCast(item.inactiveFlag))
-            row.write(columnMap['taxIncludeFlag'], safeIntCast(item.taxIncludeFlag))
-            row.write(columnMap['itemGroupID'], safeIntCast(item.itemGroupID))
-            row.write(columnMap['receiptText'], str(item.receiptText))
-            row.write(columnMap['priceOverrideFlag'], safeIntCast(item.priceOverrideFlag))
-            row.write(columnMap['priceOverrideFlag'] + 1, 'N/A')
-            row.write(columnMap['choiceGroups'], str(item.choiceGroups))
-            row.write(columnMap['kitchenPrinters'], str(item.kitchenPrinters))
+            row.write(columnMap['prntOnChk'], safeIntCast(item.prntOnChk))
+            row.write(columnMap['disc'], safeIntCast(item.disc))
+            row.write(columnMap['voidable'], safeIntCast(item.voidable))
+            row.write(columnMap['inactive'], safeIntCast(item.inactive))
+            row.write(columnMap['taxIncluded'], safeIntCast(item.taxIncluded))
+            row.write(columnMap['itemGrp'], safeIntCast(item.itemGrp))
+            row.write(columnMap['receipt'], str(item.receipt))
+            row.write(columnMap['priceOver'], safeIntCast(item.priceOver))
+            row.write(columnMap['priceOver'] + 1, 'N/A')
+            row.write(columnMap['choiceGrps'], str(item.choiceGrps))
+            row.write(columnMap['ktchnPrint'], str(item.ktchnPrint))
             row.write(columnMap['covers'], str(item.covers))
             row.write(columnMap['storeID'], str(item.storeID))
         
@@ -428,7 +473,19 @@ def showButton(button):
     button.grid()
 
 def displayAbout():
-    messagebox.showinfo(title='About', message='v0.3.16')
+    messagebox.showinfo(title='About', message='v0.4.11')
+    
+def displayColumnSelection():
+    csWin = Toplevel(root)
+    colSelectFrame = ttk.Frame(csWin)
+    colSelectFrame.grid(column=0, row=1, sticky=(N,W,E,S))
+    colSelectFrame.columnconfigure(0, weight=1)
+    colSelectFrame.rowconfigure(1, weight=1)
+    
+    for k,v in MenuItem.attributeMap.items():
+        MenuItem.attributeMap[k] = Variable()
+        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=MenuItem.attributeMap[k]).grid(column=1, row=v)
+    #ttk.Checkbutton(colSelectFrame, text='Prices', variable=colPrice).grid(column=1, row=1)
 
 root = Tk()
 root.option_add('*tearOff', FALSE)
@@ -441,6 +498,7 @@ except TclError:
 openFileString = StringVar()
 noUnpriced = BooleanVar()
 expandPriceLevels = BooleanVar()
+colPrice = BooleanVar()
 
 menubar = Menu(root)
 menu_file = Menu(menubar)
@@ -455,6 +513,7 @@ menu_file.add_command(label='Close', command=root.quit)
 
 menu_options.add_checkbutton(label='Remove Unpriced Items', variable=noUnpriced, onvalue=1, offvalue=0)
 menu_options.add_checkbutton(label='Separate Price Level', variable=expandPriceLevels, onvalue=1, offvalue=0)
+menu_options.add_command(label='Customize', command=displayColumnSelection)
 
 menu_help.add_command(label='About', command=displayAbout)
 

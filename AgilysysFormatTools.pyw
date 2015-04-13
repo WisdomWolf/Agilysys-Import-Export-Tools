@@ -532,8 +532,26 @@ def convertToExcelFull():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
+        generateFullExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
 
+def convertToExcelCustom():
+    print('customizing for excel')
+    export = file_path
+    
+    try:
+        preParse(export)
+    except UnicodeDecodeError:
+        with codecs.open(file_path, 'r', 'latin-1') as export:
+            preParse(export)
+    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
+    options = {}
+    options['title'] = 'Save As'
+    options['initialfile'] = str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_custom.xls'
+    options['filetypes'] = fileTypeFilters
+    save_file = saveFile(options)
+    if save_file:
+        generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
+        
 def separatePriceLevels():
     pass
     
@@ -553,6 +571,7 @@ def hideAllButtons():
     simpleTxtButton.grid_remove()
     simpleXlsButton.grid_remove()
     fullXlsButton.grid_remove()
+    customXlsButton.grid_remove()
     
 def showButton(button):
     button.grid()
@@ -633,7 +652,10 @@ simpleXlsButton.grid(column=1, row=5)
 fullXlsButton = ttk.Button(mainframe, text='Create Full xls', command=convertToExcelFull)
 fullXlsButton.grid(column=1, row=6)
 
-simplifyButtons = [simpleTxtButton, simpleXlsButton, fullXlsButton]
+customXlsButton = ttk.Button(mainframe, text='Create Custom xls', command=convertToExcelCustom)
+customXlsButton.grid(column=1, row=7)
+
+simplifyButtons = [simpleTxtButton, simpleXlsButton, fullXlsButton, customXlsButton]
 
 for child in mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
 

@@ -313,9 +313,9 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
     print('Maps created...')
                         
     if expandPriceLevels:
-        if 'priceLvls' in headers:
+        if 'Prices' in headers:
             print('priceLvls found in headers')
-            pricePos = headers.index('priceLvls')
+            pricePos = headers.index('Prices')
             startHeaders = headers[:pricePos]
             endHeaders = headers[pricePos + 1:]
             headers.clear()
@@ -348,7 +348,17 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
         row = sheet.row(i)
         print ('writing row ' + str(i))
         for i,c in zip(range(len(colKeys)), colKeys):
-            row.write(i, str(item.__dict__[c]))
+            if expandPriceLevels and c == 'priceLvls':
+                for p in range(1, (numberOfPriceLevels + 1)):
+                    if p in item.separatePriceLevels():
+                        price = item.separatePriceLevels()[p]
+                    else:
+                        price = ''
+                    r = pricePos - 1
+                    row.write(i + r, str(price))
+                    #Exception: Attempt to overwrite cell: sheetname='Sheet 1' rowx=2 colx=7
+            else:
+                row.write(i, str(item.__dict__[c]))
             
         #also need to figure out how best to account for price levels as they won't match map
         #Need to determine which values should be written as int, str, and safeIntCast

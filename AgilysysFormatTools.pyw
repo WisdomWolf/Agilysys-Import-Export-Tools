@@ -307,7 +307,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
             headers.append(MenuItem.textMap[k])
             colKeys.append(k)
         else:
-            print('skipped adding ' + str(k) + " to list because it's value is " + str(v.get()))
+            pass
+            #print('skipped adding ' + str(k) + " to list because it's value is " + str(v.get()))
             
     print('Maps created...')
                         
@@ -331,7 +332,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
             print('oh noes! priceLvls not found in headers, but separate prices is enabled.')
             return
         
-    for h,x,i in zip(headers, colKeys, range(1,len(headers))):
+    for h,x,i in zip(headers, colKeys, range(len(headers))):
         print('writing header: ' + str(h))
         row1.write(i, h, heading)
         row2.write(i, x, heading)

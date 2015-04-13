@@ -218,13 +218,14 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLe
                     price = ''
                 r = p - 1
                 row.write(columnMap['priceLvls'] + r, str(price))
+                
             row.write(columnMap['classID'] + (numberOfPriceLevels - 1), safeIntCast(item.classID))
             row.write(columnMap['revCat'] + (numberOfPriceLevels - 1), safeIntCast(item.revCat))
             row.write(columnMap['taxGrp'] + (numberOfPriceLevels - 1), safeIntCast(item.taxGrp))
             row.write(columnMap['securityLvl'] + (numberOfPriceLevels - 1), safeIntCast(item.securityLvl))
             row.write(columnMap['reportCat'] + (numberOfPriceLevels - 1), safeIntCast(item.reportCat))
             row.write(columnMap['byWeight'] + (numberOfPriceLevels - 1), safeIntCast(item.byWeight))
-            row.write(columnMap['tare'] + (numberOfPriceLevels - 1), str(item.tare))
+            row.write(columnMap['tare'] + (numberOfPriceLevels - 1), safeIntCast(item.tare))
             row.write(columnMap['sku'] + (numberOfPriceLevels - 1), str(item.sku))
             row.write(columnMap['gunCode'] + (numberOfPriceLevels - 1), str(item.gunCode))
             row.write(columnMap['cost'] + (numberOfPriceLevels - 1), str(item.cost))
@@ -282,8 +283,81 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLe
 
     messagebox.showinfo(title='Success', message='Excel export created successfully.')
         
-def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
-    pass
+def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPriceLevels=False):
+    items = items or itemList
+    print('preparing to convert to custom Excel')
+    book = Workbook()
+    heading = easyxf(
+        'font: bold True;'
+        'alignment: horizontal center;'
+        )
+    sheet = book.add_sheet('Sheet 1')
+    sheet.panes_frozen = True
+    sheet.remove_splits = True
+    sheet.horz_split_pos = 1
+    row1 = sheet.row(0)
+    row2 = sheet.row(1)
+    headers = []
+    colKeys = []
+    pricePos = 100
+    
+    for k,v in checkVarMap.items():
+        if v.get() == 1:
+            print('adding ' + str(k) + ' to headers')
+            headers.append(MenuItem.textMap[k])
+            colKeys.append(k)
+        else:
+            print('skipped adding ' + str(k) + " to list because it's value is " + str(v.get()))
+            
+    print('Maps created...')
+                        
+    if expandPriceLevels:
+        if 'priceLvls' in headers:
+            print('priceLvls found in headers')
+            pricePos = headers.index('priceLvls')
+            startHeaders = headers[:pricePos]
+            endHeaders = headers[pricePos + 1:]
+            headers.clear()
+            print('previous headers stored and cleared')
+            priceHeaders = []
+            numberOfPriceLevels = enumeratePriceLevels()
+            
+            for x in range(0, (numberOfPriceLevels)):
+                priceHeaders.append('Price Level ' + str(x + 1))
+                
+            headers = startHeaders + priceHeaders + endHeaders
+            
+        else:
+            print('oh noes! priceLvls not found in headers, but separate prices is enabled.')
+            return
+        
+    for h,x,i in zip(headers, colKeys, range(1,len(headers))):
+        print('writing header: ' + str(h))
+        row1.write(i, h, heading)
+        row2.write(i, x, heading)
+        
+    print('headers written')    
+    sheet.row(1).hidden = True
+    
+    for i,item in zip(range(2, len(items) + 2), items):
+        global isMisaligned
+        isMisaligned = False
+        columnMap = MenuItem.attributeMap
+        
+        row = sheet.row(i)
+        print ('writing row ' + str(i))
+        for c in colKeys:
+            row.write(columnMap[c], str(item.__dict__[c]))
+            
+        #also need to figure out how best to account for price levels as they won't match map
+        #Need to determine which values should be written as int, str, and safeIntCast
+    
+    try:
+        book.save(save_file)
+    except PermissionError:
+        messagebox.showerror(title= 'Error', message='Unable to save file')
+        
+    messagebox.showinfo(title='Success', message='Custom Excel export created successfully')
     
 def generateIGPriceUpdate(inputFile, updateFile):
     print('preparing to generate IG Price Update file')
@@ -447,7 +521,7 @@ def convertToExcelFull():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateFullExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
+        generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
 
 def separatePriceLevels():
     pass
@@ -482,10 +556,17 @@ def displayColumnSelection():
     colSelectFrame.columnconfigure(0, weight=1)
     colSelectFrame.rowconfigure(1, weight=1)
     
+    global checkVarMap
+    
     for k,v in MenuItem.attributeMap.items():
-        MenuItem.attributeMap[k] = Variable()
-        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=MenuItem.attributeMap[k]).grid(column=1, row=v)
+        if k not in checkVarMap:
+            checkVarMap[k] = Variable()
+        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=1, row=v)
     #ttk.Checkbutton(colSelectFrame, text='Prices', variable=colPrice).grid(column=1, row=1)
+
+def testCheckboxes():
+    for k,_ in MenuItem.attributeMap.items():
+        print(k + ':' + str(checkVarMap[k].get()))
 
 root = Tk()
 root.option_add('*tearOff', FALSE)
@@ -499,6 +580,7 @@ openFileString = StringVar()
 noUnpriced = BooleanVar()
 expandPriceLevels = BooleanVar()
 colPrice = BooleanVar()
+checkVarMap = {}
 
 menubar = Menu(root)
 menu_file = Menu(menubar)
@@ -516,6 +598,7 @@ menu_options.add_checkbutton(label='Separate Price Level', variable=expandPriceL
 menu_options.add_command(label='Customize', command=displayColumnSelection)
 
 menu_help.add_command(label='About', command=displayAbout)
+menu_help.add_command(label='Test Checkboxes', command=testCheckboxes)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=1, sticky=(N, W, E, S))

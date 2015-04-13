@@ -302,7 +302,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
     pricePos = 100
     
     for k,v in checkVarMap.items():
-        if v.get() == 1:
+        if str(v.get()) == '1':
             print('adding ' + str(k) + ' to headers')
             headers.append(MenuItem.textMap[k])
             colKeys.append(k)
@@ -346,8 +346,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
         
         row = sheet.row(i)
         print ('writing row ' + str(i))
-        for c in colKeys:
-            row.write(columnMap[c], str(item.__dict__[c]))
+        for i,c in zip(range(len(colKeys)), colKeys):
+            row.write(i, str(item.__dict__[c]))
             
         #also need to figure out how best to account for price levels as they won't match map
         #Need to determine which values should be written as int, str, and safeIntCast

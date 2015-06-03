@@ -96,17 +96,17 @@ class MenuItem:
     def separatePriceLevels(self):
         prices = self.priceLvls.strip("{}")
         details = prices.split(";")
-        priceList = {}
+        priceMap = {}
         level = None
         i = 1
         for x in details:
             if int(i) % 2 != 0:
                 level = x
             else:
-                priceList[int(level)] = x
+                priceMap[int(level)] = x
                 level = None
             i += 1
-        return priceList
+        return priceMap
 
     def separatePriceLevelsSorted(self):
         return sorted(self.separatePriceLevels().items())

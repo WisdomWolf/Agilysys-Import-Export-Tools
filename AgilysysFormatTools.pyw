@@ -28,11 +28,13 @@ def openFile(options=None):
     hideAllButtons()
     if itemList:
         itemList.clear()
+    #Test for existing file path from previous run
     if options == None:
         options = {}
         options['defaultextension'] = '.xls*, .txt' 
         options['filetypes'] = fileTypeFilters
         options['title'] = 'Open...'
+        options['initialdir'] = os.path.expanduser('~')
     file_opt = options
     global file_path
     file_path = filedialog.askopenfilename(**file_opt)
@@ -47,6 +49,7 @@ def openFile(options=None):
         else:
             showButton(thatButton)
         openFileString.set(str(os.path.basename(file_path)))
+        #Insert command to save file path to file
     except IOError:
         messagebox.showinfo(title='Oops', message='This file is not supported.')
         return
@@ -72,13 +75,13 @@ def preParse(file_name):
             itemDetails = re.sub(commaQuoteMatch, fixArray, itemDetails)
             item = itemDetails.split(",")
             i = MenuItem(
-                                    item[1], item[2], item[3], item[4], item[5],
-                                    item[6], item[7], item[8], item[9], item[10],
-                                    item[11], item[12], item[13], item[14], item[15],
-                                    item[16], item[18], item[19], item[20], item[21],
-                                    item[22], item[23], item[24], item[25], item[26],
-                                    item[28], item[29], item[30], item[31]
-                                    )
+                        item[1], item[2], item[3], item[4], item[5],
+                        item[6], item[7], item[8], item[9], item[10],
+                        item[11], item[12], item[13], item[14], item[15],
+                        item[16], item[18], item[19], item[20], item[21],
+                        item[22], item[23], item[24], item[25], item[26],
+                        item[28], item[29], item[30], item[31]
+                        )
 #             print('Item:\n' + i.toString())
             itemList.append(i)
     print("completed")
@@ -225,7 +228,7 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLe
             row.write(columnMap['securityLvl'] + (numberOfPriceLevels - 1), safeIntCast(item.securityLvl))
             row.write(columnMap['reportCat'] + (numberOfPriceLevels - 1), safeIntCast(item.reportCat))
             row.write(columnMap['byWeight'] + (numberOfPriceLevels - 1), safeIntCast(item.byWeight))
-            row.write(columnMap['tare'] + (numberOfPriceLevels - 1), safeIntCast(item.tare))
+            row.write(columnMap['tare'] + (numberOfPriceLevels - 1), str(item.tare))
             row.write(columnMap['sku'] + (numberOfPriceLevels - 1), str(item.sku))
             row.write(columnMap['gunCode'] + (numberOfPriceLevels - 1), str(item.gunCode))
             row.write(columnMap['cost'] + (numberOfPriceLevels - 1), str(item.cost))
@@ -316,17 +319,19 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
         if 'Prices' in headers:
             print('priceLvls found in headers')
             pricePos = headers.index('Prices')
-            startHeaders = headers[:pricePos]
-            endHeaders = headers[pricePos + 1:]
-            headers.clear()
-            print('previous headers stored and cleared')
-            priceHeaders = []
+            del headers[pricePos]
+            del colKeys[pricePos]
             numberOfPriceLevels = enumeratePriceLevels()
+            priceHeaders = []
+            print(str(numberOfPriceLevels) + ' price levels found.')
             
-            for x in range(0, (numberOfPriceLevels)):
+            for x in range(numberOfPriceLevels):
                 priceHeaders.append('Price Level ' + str(x + 1))
                 
-            headers = startHeaders + priceHeaders + endHeaders
+            priceHeaders.reverse()
+            for i,x in zip(reversed(range(1, len(priceHeaders) + 1)), priceHeaders):
+                headers.insert(pricePos, x)
+                colKeys.insert(pricePos, ('priceLvl' + str(i)))
             
         else:
             print('oh noes! priceLvls not found in headers, but separate prices is enabled.')
@@ -340,25 +345,37 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
     print('headers written')    
     sheet.row(1).hidden = True
     
-    for i,item in zip(range(2, len(items) + 2), items):
+    for r,item in zip(range(2, len(items) + 2), items):
         global isMisaligned
         isMisaligned = False
-        columnMap = MenuItem.attributeMap
+        columnMap = sorted(MenuItem.attributeMap.items(), key=lambda x: x[1])
         
-        row = sheet.row(i)
-        print ('writing row ' + str(i))
+        row = sheet.row(r)
+        print ('\n***\nwriting row ' + str(r) + '\n***\n')
         for i,c in zip(range(len(colKeys)), colKeys):
             if expandPriceLevels and c == 'priceLvls':
-                for p in range(1, (numberOfPriceLevels + 1)):
+                for p in range(numberOfPriceLevels):
                     if p in item.separatePriceLevels():
                         price = item.separatePriceLevels()[p]
                     else:
                         price = ''
-                    r = pricePos - 1
-                    row.write(i + r, str(price))
+                    if pricePos > 0:
+                        col = pricePos - 1
+                    else:
+                        col = pricePos
+                    print('Price Position: ', pricePos)
+                    print('Writing ' + str(price) + ' to column ' + str(p+col))
+                    try:
+                        row.write(p + col, str(price))
+                    except:
+                        continue
                     #Exception: Attempt to overwrite cell: sheetname='Sheet 1' rowx=2 colx=7
             else:
-                row.write(i, str(item.__dict__[c]))
+                #print('Writing ' + str(item.__dict__[c]) + ' to column ' + str(i))
+                try:
+                    row.write(i, str(item.__dict__[c]))
+                except:
+                    continue
             
         #also need to figure out how best to account for price levels as they won't match map
         #Need to determine which values should be written as int, str, and safeIntCast

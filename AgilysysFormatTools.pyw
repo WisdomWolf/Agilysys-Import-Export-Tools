@@ -281,10 +281,9 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLe
     
     try:
         book.save(save_file)
+        messagebox.showinfo(title='Success', message='Excel export created successfully.')
     except PermissionError:
         messagebox.showerror(title= 'Error', message='Unable to save file')
-
-    messagebox.showinfo(title='Success', message='Excel export created successfully.')
         
 def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPriceLevels=False):
     items = items or itemList
@@ -306,12 +305,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
     
     for k,v in sorted(checkVarMap.items(), key=lambda x: MenuItem.attributeMap.get(x[0])):
         if str(v.get()) == '1':
-            print('adding ' + str(k) + ' to headers')
             headers.append(MenuItem.textMap[k])
             colKeys.append(k)
-        else:
-            pass
-            #print('skipped adding ' + str(k) + " to list because it's value is " + str(v.get()))
             
     print('Maps created...')
                         
@@ -342,7 +337,6 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
         row1.write(i, h, heading)
         row2.write(i, x, heading)
         
-    print('headers written')    
     sheet.row(1).hidden = True
     
     for r,item in zip(range(2, len(items) + 2), items):
@@ -350,36 +344,28 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
         isMisaligned = False
         
         row = sheet.row(r)
-        print ('\n***\nwriting row ' + str(r) + '\n***\n')
-        for i,c in zip(range(len(colKeys)), colKeys):
-            if expandPriceLevels and 'priceLvl' in c:
+        for col, key in zip(range(len(colKeys)), colKeys):
+            if expandPriceLevels and 'priceLvl' in key:
                 #Strip number from priceLvl key and pass to index of separatePriceLevels
-                p = int(c[c.find('l') + 1:])
+                p = int(key[key.find('l') + 1:])
                 if p in item.separatePriceLevels():
                     price = item.separatePriceLevels()[p]
                 else:
                     price = ''
-                try:
-                    row.write(i, str(price))
-                except:
-                    pdb.set_trace()
+                    
+                row.write(col, str(price))
             else:
-                #print('Writing ' + str(item.__dict__[c]) + ' to column ' + str(i))
-                try:
-                    row.write(i, str(item.__dict__[c]))
-                except:
-                    pdb.set_trace()
-            
+                row.write(col, str(item.__dict__[key]))
+        
         #also need to figure out how best to account for price levels as they won't match map
         #Need to determine which values should be written as int, str, and safeIntCast
     
     try:
         book.save(save_file)
+        messagebox.showinfo(title='Success', message='Custom Excel export created successfully')
     except PermissionError:
         messagebox.showerror(title= 'Error', message='Unable to save file')
         
-    messagebox.showinfo(title='Success', message='Custom Excel export created successfully')
-    
 def generateIGPriceUpdate(inputFile, updateFile):
     print('preparing to generate IG Price Update file')
     if inputFile[-3:] == 'xls' or inputFile[-4:] == 'xlsx':

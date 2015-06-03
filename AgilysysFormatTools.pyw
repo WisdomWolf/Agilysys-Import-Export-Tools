@@ -304,7 +304,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
     colKeys = []
     pricePos = 100
     
-    for k,v in checkVarMap.items():
+    for k,v in sorted(checkVarMap.items(), key=lambda x: MenuItem.attributeMap.get(x[0])):
         if str(v.get()) == '1':
             print('adding ' + str(k) + ' to headers')
             headers.append(MenuItem.textMap[k])
@@ -348,34 +348,27 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
     for r,item in zip(range(2, len(items) + 2), items):
         global isMisaligned
         isMisaligned = False
-        columnMap = sorted(MenuItem.attributeMap.items(), key=lambda x: x[1])
         
         row = sheet.row(r)
         print ('\n***\nwriting row ' + str(r) + '\n***\n')
         for i,c in zip(range(len(colKeys)), colKeys):
-            if expandPriceLevels and c == 'priceLvls':
-                for p in range(numberOfPriceLevels):
-                    if p in item.separatePriceLevels():
-                        price = item.separatePriceLevels()[p]
-                    else:
-                        price = ''
-                    if pricePos > 0:
-                        col = pricePos - 1
-                    else:
-                        col = pricePos
-                    print('Price Position: ', pricePos)
-                    print('Writing ' + str(price) + ' to column ' + str(p+col))
-                    try:
-                        row.write(p + col, str(price))
-                    except:
-                        continue
-                    #Exception: Attempt to overwrite cell: sheetname='Sheet 1' rowx=2 colx=7
+            if expandPriceLevels and 'priceLvl' in c:
+                #Strip number from priceLvl key and pass to index of separatePriceLevels
+                p = int(c[c.find('l') + 1:])
+                if p in item.separatePriceLevels():
+                    price = item.separatePriceLevels()[p]
+                else:
+                    price = ''
+                try:
+                    row.write(i, str(price))
+                except:
+                    pdb.set_trace()
             else:
                 #print('Writing ' + str(item.__dict__[c]) + ' to column ' + str(i))
                 try:
                     row.write(i, str(item.__dict__[c]))
                 except:
-                    continue
+                    pdb.set_trace()
             
         #also need to figure out how best to account for price levels as they won't match map
         #Need to determine which values should be written as int, str, and safeIntCast

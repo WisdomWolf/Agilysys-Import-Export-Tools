@@ -1,5 +1,7 @@
 #!python3
 
+#todo fix empty barcode description generation
+
 import os
 import sys
 import re
@@ -464,20 +466,13 @@ def generateIGUpdate(book, updateFile):
 def generateCustomIGUpdate(book, updateFile):
     print('preparing to generate IG Update file from custom xls')
     sheet = book.sheet_by_index(0)
-    includeColumns = set()
     quotedFields = (3, 4, 5, 26)
-    
-    for col in range(1, sheet.ncols):
-        key = sheet.cell_value(1, col)
-        if 'priceLvl' in key:
-            key = 'priceLvls'
-        includeColumns.add(MenuItem.attributeMap[key])
-            
-    includeColumns = sorted(includeColumns)
             
     for row in range(2, sheet.nrows):
         itemProperties = []
-        updateType = sheet.cell_value(row,1)
+        itemPropertyMap = {}
+        priceLevelMap = {}
+        updateType = sheet.cell_value(row,0)
         if updateType != 'A' and updateType != 'U' and updateType != 'D' and updateType != 'X':
             continue
         elif updateType == 'X':
@@ -485,23 +480,28 @@ def generateCustomIGUpdate(book, updateFile):
                 message='One or more lines are not aligned properly.\nPlease correct and retry.')
             return
         else:
-            itemProperties.append('"' + str(sheet.cell_value(row,1)) + '"')
-        itemProperties.append(safeIntCast((sheet.cell_value(row,2))))
-        previousIndex = 2
-        for col in includeColumns:
-            emptySpaces = col - previousIndex - 1
-            for _ in range(emptySpaces):
-                itemProperties.append('')
-            if col in quotedFields:
-                itemProperties.append('"' + str(sheet.cell_value(row,col)) + '"')
+            itemProperties.append('"' + updateType + '"')
+            
+        for col in range(1, sheet.ncols):
+            key = sheet.cell_value(1, col)
+            if 'priceLvl' in key:
+                priceLevelMap[key] = sheet.cell_value(row, col)
+            itemPropertyMap[key] = (sheet.cell_value(row, col))
+            
+        if priceLevelMap:
+            itemPropertyMap['priceLvls'] = rebuildPriceRecord(priceLevelMap)
+            
+        for k,v in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
+            if k in itemPropertyMap.keys():
+                if v in quotedFields:
+                    itemProperties.append('"' + str(itemPropertyMap[k]) + '"')
+                else:
+                    itemProperties.append(safeIntCast(itemPropertyMap[k]))
             else:
-                itemProperties.append(safeIntCast(sheet.cell_value(row,col)))
-            previousIndex = col
-        if len(itemProperties) < 32:
-            for _ in range(32 - len(itemProperties)):
                 itemProperties.append('')
-        line = ",".join(itemProperties).replace(";",",")
-        updateFile.write(line + "\r\n")
+                
+        line = ','.join(itemProperties).replace(';',',')
+        updateFile.write(line + '\r\n')
 
     messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
     
@@ -602,13 +602,25 @@ def convertToExcelCustom():
     if save_file:
         generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
         
-def rebuildPriceRecord(prices):
-    #Strip number from priceLvl key and pass to index of separatePriceLevels
-    p = int(key[key.find('l') + 1:])
-    if p in item.separatePriceLevels():
-        price = item.separatePriceLevels()[p]
-    else:
-        price = ''
+def rebuildPriceRecord(priceMap):
+    prices = []
+    isNegative = False
+    for k,v in sorted(priceMap.items()):
+        if v != '':
+            #Strip number from priceLvl key and pass to index of separatePriceLevels
+            p = str(k[k.find('l') + 1:])
+            level = ''
+            if '(' in str(v) or '(' in str(v):
+                isNegative = True
+            price = '{0:.2f}'.format(float(str(v).strip('$()')))
+            if isNegative == True:
+                level = p + ',($' + price + ')'
+            else:
+                level = p + ',$' + price
+            prices.append(level)
+    
+    record = '{' + ','.join(prices) + '}'
+    return record
 
 def safeIntCast(value):
     try:

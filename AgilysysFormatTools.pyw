@@ -383,6 +383,9 @@ def generateIGPriceUpdate(inputFile, updateFile):
             if sheet.cell_value(1,1) == True or sheet.cell_value(1,1) == False:
                 generateIGUpdate(book, updateFile)
                 return
+            elif sheet.cell_value(1,0) == 'modType':
+                generateCustomIGUpdate(book, updateFile)
+                return
             print('Extra Price Levels found.')
             for row in range(1, sheet.nrows):
                 prices = []
@@ -425,6 +428,50 @@ def generateIGUpdate(book, updateFile):
     for col in range(3, sheet.ncols):
         if sheet.cell_value(1, col) == True:
             includeColumns.add(col)
+            
+    includeColumns = sorted(includeColumns)
+            
+    for row in range(2, sheet.nrows):
+        itemProperties = []
+        updateType = sheet.cell_value(row,1)
+        if updateType != 'A' and updateType != 'U' and updateType != 'D' and updateType != 'X':
+            continue
+        elif updateType == 'X':
+            messagebox.showwarning(title='File Error', 
+                message='One or more lines are not aligned properly.\nPlease correct and retry.')
+            return
+        else:
+            itemProperties.append('"' + str(sheet.cell_value(row,1)) + '"')
+        itemProperties.append(safeIntCast((sheet.cell_value(row,2))))
+        previousIndex = 2
+        for col in includeColumns:
+            emptySpaces = col - previousIndex - 1
+            for _ in range(emptySpaces):
+                itemProperties.append('')
+            if col in quotedFields:
+                itemProperties.append('"' + str(sheet.cell_value(row,col)) + '"')
+            else:
+                itemProperties.append(safeIntCast(sheet.cell_value(row,col)))
+            previousIndex = col
+        if len(itemProperties) < 32:
+            for _ in range(32 - len(itemProperties)):
+                itemProperties.append('')
+        line = ",".join(itemProperties).replace(";",",")
+        updateFile.write(line + "\r\n")
+
+    messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+    
+def generateCustomIGUpdate(book, updateFile):
+    print('preparing to generate IG Update file from custom xls')
+    sheet = book.sheet_by_index(0)
+    includeColumns = set()
+    quotedFields = (3, 4, 5, 26)
+    
+    for col in range(1, sheet.ncols):
+        key = sheet.cell_value(1, col)
+        if 'priceLvl' in key:
+            key = 'priceLvls'
+        includeColumns.add(MenuItem.attributeMap[key])
             
     includeColumns = sorted(includeColumns)
             
@@ -555,9 +602,14 @@ def convertToExcelCustom():
     if save_file:
         generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
         
-def separatePriceLevels():
-    pass
-    
+def rebuildPriceRecord(prices):
+    #Strip number from priceLvl key and pass to index of separatePriceLevels
+    p = int(key[key.find('l') + 1:])
+    if p in item.separatePriceLevels():
+        price = item.separatePriceLevels()[p]
+    else:
+        price = ''
+
 def safeIntCast(value):
     try:
         return str(int(value))

@@ -32,6 +32,11 @@ class MenuItem:
                 'receipt':'Receipt Text', 'priceOver':'Allow Price Override',
                 'choiceGrps':'Choice Groups', 'ktchnPrint':'Kitchen Printers',
                 'covers':'Covers', 'storeID':'Store ID'}
+                
+    integerItems = ['classID', 'revCat', 'taxGrp', 'securityLvl', 'reportCat',
+                        'byWeight', 'pricePrompt', 'prntOnChk', 'disc',
+                        'voidable', 'inactive', 'taxIncluded', 'itemGrp',
+                        'priceOver']
     
     def __init__(
                 self, itemID, name, abbr1=None, abbr2=None, printLabel=None,

@@ -82,8 +82,8 @@ def preParse(file_name):
                         item[22], item[23], item[24], item[25], item[26],
                         item[28], item[29], item[30], item[31]
                         )
-#             print('Item:\n' + i.toString())
-            itemList.append(i)
+            if str(i.storeID) == '0':
+                itemList.append(i)
     print("completed")
         
 def enumeratePriceLevels():
@@ -293,6 +293,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
         'font: bold True;'
         'alignment: horizontal center;'
         )
+    oopsStyle = (easyxf('pattern: pattern solid, fore_color rose'))
     sheet = book.add_sheet('Sheet 1')
     sheet.panes_frozen = True
     sheet.remove_splits = True
@@ -355,7 +356,13 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
                     
                 row.write(col, str(price))
             else:
-                row.write(col, str(item.__dict__[key]))
+                if key in MenuItem.integerItems:
+                    row.write(col, safeIntCast(item.__dict__[key]))
+                else:
+                    row.write(col, str(item.__dict__[key]))
+                    
+        if isMisaligned:
+            row.write(1, 'X', oopsStyle)
         
         #also need to figure out how best to account for price levels as they won't match map
         #Need to determine which values should be written as int, str, and safeIntCast

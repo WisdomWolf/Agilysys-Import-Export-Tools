@@ -333,7 +333,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
             print('oh noes! priceLvls not found in headers, but separate prices is enabled.')
             return
         
-    for h,x,i in zip(headers, colKeys, range(len(headers))):
+    for h,x,i in zip(headers, colKeys, range(1, len(headers) + 1)):
         print('writing header: ' + str(h))
         row1.write(i, h, heading)
         row2.write(i, x, heading)
@@ -345,7 +345,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
         isMisaligned = False
         
         row = sheet.row(r)
-        for col, key in zip(range(len(colKeys)), colKeys):
+        for col, key in zip(range(1, len(colKeys) + 1), colKeys):
             if expandPriceLevels and 'priceLvl' in key:
                 #Strip number from priceLvl key and pass to index of separatePriceLevels
                 p = int(key[key.find('l') + 1:])
@@ -362,7 +362,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
                     row.write(col, str(item.__dict__[key]))
                     
         if isMisaligned:
-            row.write(1, 'X', oopsStyle)
+            row.write(0, 'X', oopsStyle)
         
         #also need to figure out how best to account for price levels as they won't match map
         #Need to determine which values should be written as int, str, and safeIntCast

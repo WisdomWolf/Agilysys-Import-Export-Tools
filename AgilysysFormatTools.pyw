@@ -585,7 +585,7 @@ def displayAbout():
 def displayColumnSelection():
     csWin = Toplevel(root)
     colSelectFrame = ttk.Frame(csWin)
-    colSelectFrame.grid(column=0, row=1, sticky=(N,W,E,S))
+    colSelectFrame.grid(column=0, row=1, sticky=(N,S,E,W))
     colSelectFrame.columnconfigure(0, weight=1)
     colSelectFrame.rowconfigure(1, weight=1)
     
@@ -594,7 +594,7 @@ def displayColumnSelection():
     for k,v in MenuItem.attributeMap.items():
         if k not in checkVarMap:
             checkVarMap[k] = Variable()
-        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=1, row=v)
+        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=1, row=v, sticky=(N,W))
     #ttk.Checkbutton(colSelectFrame, text='Prices', variable=colPrice).grid(column=1, row=1)
 
 def testCheckboxes():

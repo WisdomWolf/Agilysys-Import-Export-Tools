@@ -597,7 +597,7 @@ def convertToExcelCustom():
             preParse(export)
             
     displayColumnSelection()
-    pdb.set_trace()
+    root.wait_window(csWin)
     fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
     options = {}
     options['title'] = 'Save As'

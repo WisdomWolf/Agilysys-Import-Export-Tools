@@ -93,7 +93,6 @@ class MenuItem:
             result.append(v)
         return ",".join(result)
         
-        
     def showOriginal(self):
         print("Orginal Line: " + str(self.original))
         print("Parsed Data: " + str(self.parsed))

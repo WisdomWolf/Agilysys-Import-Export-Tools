@@ -9,7 +9,7 @@ import codecs
 import pdb
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
-from Things.MenuItemThings import MenuItem
+from MenuItem import MenuItem
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
@@ -500,6 +500,8 @@ def generateCustomIGUpdate(book, updateFile):
             else:
                 itemProperties.append('')
                 
+        itemProperties.append('')
+        itemProperties.append('') #appending two additional comma for parity
         line = ','.join(itemProperties).replace(';',',')
         updateFile.write(line + '\r\n')
 
@@ -593,6 +595,9 @@ def convertToExcelCustom():
     except UnicodeDecodeError:
         with codecs.open(file_path, 'r', 'latin-1') as export:
             preParse(export)
+            
+    displayColumnSelection()
+    pdb.set_trace()
     fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
     options = {}
     options['title'] = 'Save As'
@@ -655,16 +660,21 @@ def displayColumnSelection():
     colSelectFrame.rowconfigure(1, weight=1)
     
     global checkVarMap
-    rowCount = 0
+    row_count = 0
     
-    for k,v in MenuItem.attributeMap.items():
+    for k,v in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
+        col = 0
         if k not in checkVarMap:
-            rowCount += 1
             checkVarMap[k] = Variable()
-        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=1, row=v, sticky=(N,W))
-    
-    print(rowCount)
+        if int(v) % 2 == 0:
+            col = 3
+            row_count += 1
+        else:
+            col = 0
+        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=col, row=row_count, sticky=(N,W))
+
     ttk.Button(colSelectFrame, text='OK', command=csWin.destroy).grid(column=1, row=100)
+    return
 
 def testCheckboxes():
     for k,_ in MenuItem.attributeMap.items():

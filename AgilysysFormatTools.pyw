@@ -662,7 +662,7 @@ def showButton(button):
     button.grid()
 
 def displayAbout():
-    messagebox.showinfo(title='About', message='v0.6.5')
+    messagebox.showinfo(title='About', message='v0.6.10')
     
 def displayColumnSelection():
     global csWin

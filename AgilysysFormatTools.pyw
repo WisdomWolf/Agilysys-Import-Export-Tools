@@ -12,12 +12,16 @@ from tkinter import ttk, messagebox, filedialog
 from MenuItem import MenuItem
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
+from configparser import ConfigParser
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
 fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'), ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 app_directory = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
-last_path = os.path.join(app_directory, 'last_path.txt')
+config_file = os.path.join(app_directory, 'config.ini')
+config = ConfigParser()
+config.read(config_file)
+
 IG_EXPORT = 1
 SIMPLE_EXPORT = 3
 UNKNOWN_EXPORT = 10
@@ -33,12 +37,10 @@ def openFile(options=None):
     init_dir = ''
     if itemList:
         itemList.clear()
-    if os.path.exists(last_path):
-        with codecs.open(last_path, 'r+', 'utf8') as x:
-            for line in x:
-                init_dir = line
-    
-    if not init_dir:
+        
+    try:
+        init_dir = config['Paths']['last dir']
+    except KeyError:
         init_dir = os.path.expanduser('~')
         
     if options == None:
@@ -60,9 +62,11 @@ def openFile(options=None):
                 showButton(button)
         else:
             showButton(thatButton)
-        openFileString.set(str(os.path.basename(file_path)))
-        with codecs.open(last_path, 'w+', 'utf8') as x:
-            x.write(file_path)
+            
+        config['Paths'] = {'last dir': file_path}
+        with open(config_file, 'w') as f:
+            config.write(f)
+            
     except IOError:
         messagebox.showinfo(title='Oops', message='This file is not supported.')
         return
@@ -298,7 +302,7 @@ def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLe
     except PermissionError:
         messagebox.showerror(title= 'Error', message='Unable to save file')
         
-def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPriceLevels=False):
+def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
     items = items or itemList
     print('preparing to convert to custom Excel')
     book = Workbook()
@@ -614,7 +618,7 @@ def convertToExcelCustom():
     options['filetypes'] = fileTypeFilters
     save_file = saveFile(options)
     if save_file:
-        generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
+        generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get())
         
 def rebuildPriceRecord(priceMap):
     prices = []

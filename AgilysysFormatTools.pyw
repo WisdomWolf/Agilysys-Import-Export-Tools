@@ -16,6 +16,8 @@ from xlrd import open_workbook
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
 fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'), ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
+app_directory = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
+last_path = os.path.join(app_directory, 'last_path.txt')
 IG_EXPORT = 1
 SIMPLE_EXPORT = 3
 UNKNOWN_EXPORT = 10
@@ -28,15 +30,23 @@ def ezPrint(string):
     
 def openFile(options=None):
     hideAllButtons()
+    init_dir = ''
     if itemList:
         itemList.clear()
-    #Test for existing file path from previous run
+    if os.path.exists(last_path):
+        with codecs.open(last_path, 'r+', 'utf8') as x:
+            for line in x:
+                init_dir = line
+    
+    if not init_dir:
+        init_dir = os.path.expanduser('~')
+        
     if options == None:
         options = {}
         options['defaultextension'] = '.xls*, .txt' 
         options['filetypes'] = fileTypeFilters
         options['title'] = 'Open...'
-        options['initialdir'] = os.path.expanduser('~')
+        options['initialdir'] = init_dir
     file_opt = options
     global file_path
     file_path = filedialog.askopenfilename(**file_opt)
@@ -51,7 +61,8 @@ def openFile(options=None):
         else:
             showButton(thatButton)
         openFileString.set(str(os.path.basename(file_path)))
-        #Insert command to save file path to file
+        with codecs.open(last_path, 'w+', 'utf8') as x:
+            x.write(file_path)
     except IOError:
         messagebox.showinfo(title='Oops', message='This file is not supported.')
         return
@@ -302,8 +313,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
     sheet.horz_split_pos = 1
     row1 = sheet.row(0)
     row2 = sheet.row(1)
-    headers = []
-    colKeys = []
+    headers = ['"A"', 'ID']
+    colKeys = ['modType', 'id']
     pricePos = 100
     
     for k,v in sorted(checkVarMap.items(), key=lambda x: MenuItem.attributeMap.get(x[0])):
@@ -313,42 +324,41 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
             
     print('Maps created...')
                         
-    if expandPriceLevels:
-        if 'Prices' in headers:
-            print('priceLvls found in headers')
-            pricePos = headers.index('Prices')
-            del headers[pricePos]
-            del colKeys[pricePos]
-            numberOfPriceLevels = enumeratePriceLevels()
-            priceHeaders = []
-            print(str(numberOfPriceLevels) + ' price levels found.')
-            
-            for x in range(numberOfPriceLevels):
-                priceHeaders.append('Price Level ' + str(x + 1))
-                
-            priceHeaders.reverse()
-            for i,x in zip(reversed(range(1, len(priceHeaders) + 1)), priceHeaders):
-                headers.insert(pricePos, x)
-                colKeys.insert(pricePos, ('priceLvl' + str(i)))
-            
-        else:
-            print('oh noes! priceLvls not found in headers, but separate prices is enabled.')
-            return
+    if 'Prices' in headers:
+        print('priceLvls found in headers')
+        pricePos = headers.index('Prices')
+        del headers[pricePos]
+        del colKeys[pricePos]
+        numberOfPriceLevels = enumeratePriceLevels()
+        priceHeaders = []
+        print(str(numberOfPriceLevels) + ' price levels found.')
         
-    for h,x,i in zip(headers, colKeys, range(1, len(headers) + 1)):
+        for x in range(numberOfPriceLevels):
+            priceHeaders.append('Price Level ' + str(x + 1))
+            
+        priceHeaders.reverse()
+        for i,x in zip(reversed(range(1, len(priceHeaders) + 1)), priceHeaders):
+            headers.insert(pricePos, x)
+            colKeys.insert(pricePos, ('priceLvl' + str(i)))
+    
+    #Write Headers
+    for h,x,i in zip(headers, colKeys, range(len(headers))):
         print('writing header: ' + str(h))
         row1.write(i, h, heading)
         row2.write(i, x, heading)
         
     sheet.row(1).hidden = True
     
+    #Write Rows
     for r,item in zip(range(2, len(items) + 2), items):
         global isMisaligned
         isMisaligned = False
         
         row = sheet.row(r)
-        for col, key in zip(range(1, len(colKeys) + 1), colKeys):
-            if expandPriceLevels and 'priceLvl' in key:
+        
+        #Write item values to columns
+        for col, key in zip(range(len(colKeys)), colKeys):
+            if 'priceLvl' in key:
                 #Strip number from priceLvl key and pass to index of separatePriceLevels
                 p = int(key[key.find('l') + 1:])
                 if p in item.separatePriceLevels():
@@ -360,14 +370,13 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True, expandPrice
             else:
                 if key in MenuItem.integerItems:
                     row.write(col, safeIntCast(item.__dict__[key]))
+                elif key == 'modType':
+                    continue
                 else:
                     row.write(col, str(item.__dict__[key]))
                     
         if isMisaligned:
             row.write(0, 'X', oopsStyle)
-        
-        #also need to figure out how best to account for price levels as they won't match map
-        #Need to determine which values should be written as int, str, and safeIntCast
     
     try:
         book.save(save_file)
@@ -661,24 +670,23 @@ def displayColumnSelection():
     
     global checkVarMap
     row_count = 0
+    counter = 0
     
     for k,v in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
         col = 0
         if k not in checkVarMap:
             checkVarMap[k] = Variable()
-        if int(v) % 2 == 0:
-            col = 3
-            row_count += 1
-        else:
-            col = 0
-        l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=col, row=row_count, sticky=(N,W))
-
+        if k != 'id':
+            if counter % 2 == 0:
+                col = 0
+                row_count += 1
+            else:
+                col = 3
+            l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=col, row=row_count, sticky=(N,W))
+            counter += 1
+            
     ttk.Button(colSelectFrame, text='OK', command=csWin.destroy).grid(column=1, row=100)
     return
-
-def testCheckboxes():
-    for k,_ in MenuItem.attributeMap.items():
-        print(k + ':' + str(checkVarMap[k].get()))
 
 root = Tk()
 root.option_add('*tearOff', FALSE)
@@ -694,6 +702,9 @@ expandPriceLevels = BooleanVar()
 colPrice = BooleanVar()
 checkVarMap = {}
 
+if not os.path.exists(app_directory):
+    os.mkdir(app_directory)
+
 menubar = Menu(root)
 menu_file = Menu(menubar)
 menu_options = Menu(menubar)
@@ -707,10 +718,8 @@ menu_file.add_command(label='Close', command=root.quit)
 
 menu_options.add_checkbutton(label='Remove Unpriced Items', variable=noUnpriced, onvalue=1, offvalue=0)
 menu_options.add_checkbutton(label='Separate Price Level', variable=expandPriceLevels, onvalue=1, offvalue=0)
-menu_options.add_command(label='Customize', command=displayColumnSelection)
 
 menu_help.add_command(label='About', command=displayAbout)
-menu_help.add_command(label='Test Checkboxes', command=testCheckboxes)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=1, sticky=(N, W, E, S))

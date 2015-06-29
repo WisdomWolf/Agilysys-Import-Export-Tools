@@ -16,9 +16,11 @@ from configparser import ConfigParser
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
-fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'), ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
+fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'),
+                   ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 app_directory = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
 config_file = os.path.join(app_directory, 'config.ini')
+log_file = os.path.join(app_directory, 'errors.log')
 config = ConfigParser()
 config.read(config_file)
 
@@ -69,6 +71,7 @@ def openFile(options=None):
             
     except IOError:
         messagebox.showinfo(title='Oops', message='This file is not supported.')
+        print('{0}\n{1}'.format(sys.exc_info()[0], sys.exc_info()[1]))
         return
         
     
@@ -170,9 +173,11 @@ def generateSimpleExcel(save_file, items=None, excludeUnpriced=True):
     sheet.col(1).width = 12780
     book.save(save_file)
         
-    messagebox.showinfo(title='Success', message='Simplified excel sheet created successfully.')
+    messagebox.showinfo(title='Success',
+                        message='Simplified excel sheet created successfully.')
             
-def generateFullExcel(save_file, items=None, excludeUnpriced=True, expandPriceLevels=False):
+def generateFullExcel(save_file, items=None,
+                      excludeUnpriced=True, expandPriceLevels=False):
     items = items or itemList
     print('preparing to convert to Excel')
     book = Workbook()
@@ -384,7 +389,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
     
     try:
         book.save(save_file)
-        messagebox.showinfo(title='Success', message='Custom Excel export created successfully')
+        messagebox.showinfo(title='Success',
+                            message='Custom Excel export created successfully')
     except PermissionError:
         messagebox.showerror(title= 'Error', message='Unable to save file')
         
@@ -394,12 +400,12 @@ def generateIGPriceUpdate(inputFile, updateFile):
         print('generating IG Update from xls')
         book = open_workbook(inputFile)
         sheet = book.sheet_by_index(0)
+        if sheet.cell_value(1,0) == 'modType':
+            generateCustomIGUpdate(book, updateFile)
+            return
         if sheet.ncols > 3:
             if sheet.cell_value(1,1) == True or sheet.cell_value(1,1) == False:
                 generateIGUpdate(book, updateFile)
-                return
-            elif sheet.cell_value(1,0) == 'modType':
-                generateCustomIGUpdate(book, updateFile)
                 return
             print('Extra Price Levels found.')
             for row in range(1, sheet.nrows):
@@ -408,28 +414,33 @@ def generateIGPriceUpdate(inputFile, updateFile):
                 for col in range(2, sheet.ncols):
                     if sheet.cell_value(row,col) != '':
                         priceLevelNumber = str(col - 1) + ','
-                        if '(' in str(sheet.cell_value(row,col)) or '(' in str(sheet.cell_value(row,col)):
+                        if '(' in str(sheet.cell_value(row,col)) or \
+                                        '(' in str(sheet.cell_value(row,col)):
                             isNegative = True
-                        price = '{0:.2f}'.format(float(str(sheet.cell_value(row,col)).strip('$()')))
-                        if isNegative == True:
+                        price = '{0:.2f}'.format(float(str(sheet.cell_value(row,col))
+                                                       .strip('$()')))
+                        if isNegative:
                             priceLevel = priceLevelNumber + '($' + price + ')'
                         else:
                             priceLevel = priceLevelNumber + '$' + price
                         prices.append(priceLevel)
-                priceImport = '{' + ','.join(prices) + '}'
-                line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(priceImport) + ',,,,,,,,,,,,,,,,,\r\n'
+                price_import = '{' + ','.join(prices) + '}'
+                line = '\"U\",{0},,,,,{1},,,,,,,,,,,,,,,,,\r\n'.format(
+                    str(sheet.cell_value(row, 0)), str(price_import))
                 updateFile.write(line)
         else:
             print('Processing with a single price level')
             for row in range(1, sheet.nrows):
-                line = '"U",' + str(sheet.cell_value(row, 0)) + ',,,,,' + str(sheet.cell_value(row,2)) + ',,,,,,,,,,,,,,,,,\r\n'
+                line = '\"U\",{0},,,,,{1},,,,,,,,,,,,,,,,,\r\n'.format(
+                    str(sheet.cell_value(row, 0)), str(sheet.cell_value(row, 2)))
     else:
         print('generating IG Update from txt or csv')
         with codecs.open(file_path, 'r', 'latin-1') as file:
             for x in file:
                 details = x.split(",")
                 details[2] = details[2].replace(";", ",").strip("\r\n")
-                line = '"U",' + str(details[0]) + ',,,,,' + str(details[2]) + ',,,,,,,,,,,,,,,,,\r\n'
+                line = '\"U\",{0},,,,,{1},,,,,,,,,,,,,,,,,\r\n'.format(str(details[0]),
+                                                                       str(details[2]))
                 updateFile.write(line)
 
     messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
@@ -708,6 +719,9 @@ checkVarMap = {}
 
 if not os.path.exists(app_directory):
     os.mkdir(app_directory)
+
+FSOCK = open(log_file, 'a+')
+sys.stderr = FSOCK
 
 menubar = Menu(root)
 menu_file = Menu(menubar)

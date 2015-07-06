@@ -1,6 +1,7 @@
 #!python3
 
 #todo fix empty barcode description generation
+#todo add sentinel item generation for import verification
 
 import os
 import sys
@@ -13,6 +14,8 @@ from MenuItem import MenuItem
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 from configparser import ConfigParser
+
+__version__ = 'v0.6.29'
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
@@ -102,6 +105,7 @@ def preParse(file_name):
                         item[22], item[23], item[24], item[25], item[26],
                         item[28], item[29], item[30], item[31]
                         )
+            #Skip Store Items
             if str(i.storeID) == '0':
                 itemList.append(i)
     print("completed")
@@ -673,7 +677,7 @@ def showButton(button):
     button.grid()
 
 def displayAbout():
-    messagebox.showinfo(title='About', message='v0.6.10')
+    messagebox.showinfo(title='About', message=__version__)
     
 def displayColumnSelection():
     global csWin

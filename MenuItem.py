@@ -87,23 +87,18 @@ class MenuItem:
         for k,v in sorted(self.__dict__.items()):
             print(k + ": " + v)
         
-    def toString(self):
+    def __str__(self):
         result = []
         for _,v in self.__dict__.items():
             result.append(v)
         return ",".join(result)
         
-    def showOriginal(self):
-        print("Orginal Line: " + str(self.original))
-        print("Parsed Data: " + str(self.parsed))
-        
     def separatePriceLevels(self):
-        prices = self.priceLvls.strip("{}")
-        details = prices.split(";")
+        prices = self.priceLvls.strip("{}").split(";")
         priceMap = {}
         level = None
         i = 1
-        for x in details:
+        for x in prices:
             if int(i) % 2 != 0:
                 level = x
             else:
@@ -116,11 +111,12 @@ class MenuItem:
         return sorted(self.separatePriceLevels().items())
 
     def printPrices(self):
-        prices = self.separatepriceLevelsSorted()
+        prices = self.separatePriceLevelsSorted()
         for k,v in prices.items():
             print("Price Level " + str(k) + ": " + str(v))
             
-    def getFlagText(self, number):
+    @staticmethod
+    def getFlagText(number):
         if number == 0:
             return 'False'
         else:

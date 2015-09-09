@@ -24,7 +24,7 @@ class MenuItem:
                 'revCat':'Revenue Category', 'taxGrp':'Tax Group',
                 'securityLvl':'Security Level', 'reportCat':'Report Category',
                 'byWeight':'By Weight', 'tare':'Tare Weight', 'sku':'SKU',
-                'gunCode':'Gun Code', 'cost':'Cost', 'classID':'Class ID',
+                'gunCode':'Gun Code', 'cost':'Cost', 'classID':'Product Class',
                 'pricePrompt':'Prompt For Price',
                 'prntOnChk':'Print on Check', 'disc':'Discountable',
                 'voidable':'Voidable', 'inactive':'Inactive',

@@ -7,3 +7,4 @@
 **pycache**
 /build/
 /dist/
+/.idea/**

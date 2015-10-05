@@ -5,6 +5,7 @@
 **.spec
 **.xls
 **pycache**
+**.lnk
 /build/
 /dist/
 /.idea/**

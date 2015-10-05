@@ -5,6 +5,9 @@
 
 import os
 import codecs
+import datetime
+import pdb
+import time
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
 from configparser import ConfigParser
@@ -91,7 +94,6 @@ def fixArray(match, ):
     match = str(match.group(0))
     return match.replace(",", ";")
 
-
 def preParse(file_name):
     with codecs.open(file_name, 'r', 'latin-1') as export:
         print('pre-parse initiated')
@@ -99,14 +101,23 @@ def preParse(file_name):
             itemDetails = re.sub(priceArrayMatch, fixArray, line)
             itemDetails = re.sub(commaQuoteMatch, fixArray, itemDetails)
             item = itemDetails.split(",")
-            i = MenuItem(
-                item[1], item[2], item[3], item[4], item[5],
-                item[6], item[7], item[8], item[9], item[10],
-                item[11], item[12], item[13], item[14], item[15],
-                item[16], item[18], item[19], item[20], item[21],
-                item[22], item[23], item[24], item[25], item[26],
-                item[28], item[29], item[30], item[31]
-            )
+            try:
+                i = MenuItem(
+                    item[1], item[2], item[3], item[4], item[5],
+                    item[6], item[7], item[8], item[9], item[10],
+                    item[11], item[12], item[13], item[14], item[15],
+                    item[16], item[18], item[19], item[20], item[21],
+                    item[22], item[23], item[24], item[25], item[26],
+                    item[28], item[29], item[30], item[31]
+                )
+            except IndexError:
+                response = None
+                if item[1]:
+                    response = messagebox.askokcancel(title='Error reading file', message='Unable to parse line {0}'.format(item[1]))
+                else:
+                    response = messagebox.askokcancel(title='Error reading file', message='Unable to parse info:\n' + line)
+                if not response:
+                    os._exit(1)
             # Skip Store Items
             if str(i.storeID) == '0':
                 itemList.append(i)
@@ -543,10 +554,12 @@ def generateCustomIGUpdate(book, updateFile):
                 itemProperties.append('')
 
         itemProperties.append('')
-        itemProperties.append('')  # appending two additional comma for parity
+        itemProperties.append('')  # appending two additional commas for parity
         line = ','.join(itemProperties).replace(';', ',')
         updateFile.write(line + '\r\n')
 
+    # adding sentinel item
+    updateFile.write('"A", "7110001", "{0}",,,,{1,$0.00},,,,,,,,,,,,,,,,,,,,,,,,,'.format(time.strftime('%c', time.localtime())))
     messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
 
 
@@ -658,7 +671,7 @@ def rebuildPriceRecord(priceMap):
             level = ''
             if '(' in str(v) or '(' in str(v):
                 isNegative = True
-            price = '{0:.2f}'.format(float(str(v).strip('$()')))
+            price = '{0:.2f}'.format(float(str(v).strip('$(){}')))
             if isNegative:
                 level = p + ',($' + price + ')'
             else:

@@ -17,7 +17,7 @@ from xlrd import open_workbook
 
 from MenuItem import MenuItem
 
-__version__ = 'v0.6.29'
+__version__ = 'v0.10.7'
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
@@ -520,20 +520,22 @@ def generateCustomIGUpdate(book, updateFile):
     print('preparing to generate IG Update file from custom xls')
     sheet = book.sheet_by_index(0)
     quotedFields = (3, 4, 5, 26)
+    updated_items = 0
 
     for row in range(2, sheet.nrows):
         itemProperties = []
         itemPropertyMap = {}
         priceLevelMap = {}
-        updateType = sheet.cell_value(row, 0)
-        if updateType != 'A' and updateType != 'U' and updateType != 'D' and updateType != 'X':
+        update_type = sheet.cell_value(row, 0)
+        if update_type != 'A' and update_type != 'U' and update_type != 'D' and update_type != 'X':
             continue
-        elif updateType == 'X':
+        elif update_type == 'X':
             messagebox.showwarning(title='File Error',
                                    message='One or more lines are not aligned properly.\nPlease correct and retry.')
             return
         else:
-            itemProperties.append('"' + updateType + '"')
+            itemProperties.append('"' + update_type + '"')
+            updated_items += 1
 
         for col in range(1, sheet.ncols):
             key = sheet.cell_value(1, col)
@@ -559,8 +561,11 @@ def generateCustomIGUpdate(book, updateFile):
         updateFile.write(line + '\r\n')
 
     # adding sentinel item
-    updateFile.write('"A", "7110001", "{0}",,,,{1,$0.00},,,,,,,,,,,,,,,,,,,,,,,,,'.format(time.strftime('%c', time.localtime())))
-    messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+    updateFile.write('"A", "7110001", "{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(time.strftime('%c', time.localtime())))
+    if updated_items:
+        messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+    else:
+        messagebox.showinfo(title='Oops', message="No items processed.  Did you remember to put a 'U' or 'A' in the first column?")
 
 
 def determineExportType(f):

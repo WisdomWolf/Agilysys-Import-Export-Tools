@@ -564,7 +564,8 @@ def generateCustomIGUpdate(book, updateFile):
         updateFile.write(line + '\r\n')
 
     # adding sentinel item
-    updateFile.write('"A", "7110001", "{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(time.strftime('%c', time.localtime())))
+    timestamp = time.strftime('%b %d %Y %H%M%S', time.localtime())
+    updateFile.write('"A",7110001,"{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(timestamp))
     if updated_items:
         messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
     else:

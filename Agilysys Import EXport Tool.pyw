@@ -113,9 +113,11 @@ def preParse(file_name):
             except IndexError:
                 response = None
                 if item[1]:
-                    response = messagebox.askokcancel(title='Error reading file', message='Unable to parse line {0}'.format(item[1]))
+                    response = messagebox.askokcancel(title='Error reading file',
+                                                      message='Unable to parse line {0}'.format(item[1]))
                 else:
-                    response = messagebox.askokcancel(title='Error reading file', message='Unable to parse info:\n' + line)
+                    response = messagebox.askokcancel(title='Error reading file',
+                                                      message='Unable to parse info:\n' + line)
                 if not response:
                     os._exit(1)
             # Skip Store Items
@@ -131,8 +133,9 @@ def enumeratePriceLevels():
     # Seems to still miss price levels above range and has potential for issues
     #  if no item contains all prices
     for item in itemList:
-        if len(item.separatePriceLevels()) > numberOfPriceLevels:
-            numberOfPriceLevels = len(item.separatePriceLevels())
+        levels = item.separatePriceLevels()
+        if max(k for k,_ in levels.items()) > numberOfPriceLevels:
+            numberOfPriceLevels = max(k for k,_ in levels.items())
     return numberOfPriceLevels
 
 

@@ -522,6 +522,8 @@ def generateCustomIGUpdate(book, updateFile):
     quotedFields = (3, 4, 5, 26)
     updated_items = 0
 
+    print('Processing {0} rows'.format(sheet.nrows))
+
     for row in range(2, sheet.nrows):
         itemProperties = []
         itemPropertyMap = {}
@@ -534,11 +536,12 @@ def generateCustomIGUpdate(book, updateFile):
                                    message='One or more lines are not aligned properly.\nPlease correct and retry.')
             return
         else:
-            itemProperties.append('"' + update_type + '"')
+            itemProperties.append('"{0}"'.format(update_type))
             updated_items += 1
 
         for col in range(1, sheet.ncols):
             key = sheet.cell_value(1, col)
+            print('processing {0} key'.format(key))
             if 'priceLvl' in key:
                 priceLevelMap[key] = sheet.cell_value(row, col)
             itemPropertyMap[key] = (sheet.cell_value(row, col))
@@ -549,10 +552,13 @@ def generateCustomIGUpdate(book, updateFile):
         for key, position in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
             if k in itemPropertyMap.keys():
                 if position in quotedFields:
+                    print('appending {0}'.format(itemPropertyMap[k]))
                     itemProperties.append('"{0}"'.format(itemPropertyMap[k]))
                 else:
+                    print('Safe Casting and appending {0}'.format(itemPropertyMap[k]))
                     itemProperties.append(safeIntCast(itemPropertyMap[k]))
             else:
+                print('appending place holder')
                 itemProperties.append('')
 
         line = ','.join(itemProperties).replace(';', ',')
@@ -578,6 +584,7 @@ def determineExportType(f):
             return SIMPLE_EXPORT
     else:
         raise IOError('UnsupportedFileExtensionError')
+
 
 # Use lambda: runConversion(x) to pass values with button command call
 def runConversion():

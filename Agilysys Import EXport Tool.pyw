@@ -127,7 +127,6 @@ def preParse(file_name):
             else:
                 continue
     print("parse completed")
-    pdb.set_trace()
 
 
 def enumeratePriceLevels():
@@ -517,12 +516,9 @@ def generateIGUpdate(book, updateFile):
 
 
 def generateCustomIGUpdate(book, updateFile):
-    print('preparing to generate IG Update file from custom xls')
     sheet = book.sheet_by_index(0)
     quotedFields = (3, 4, 5, 26)
     updated_items = 0
-
-    print('Processing {0} rows'.format(sheet.nrows))
 
     for row in range(2, sheet.nrows):
         itemProperties = []
@@ -541,7 +537,6 @@ def generateCustomIGUpdate(book, updateFile):
 
         for col in range(1, sheet.ncols):
             key = sheet.cell_value(1, col)
-            print('processing {0} key'.format(key))
             if 'priceLvl' in key:
                 priceLevelMap[key] = sheet.cell_value(row, col)
             itemPropertyMap[key] = (sheet.cell_value(row, col))
@@ -550,15 +545,12 @@ def generateCustomIGUpdate(book, updateFile):
             itemPropertyMap['priceLvls'] = rebuildPriceRecord(priceLevelMap)
 
         for key, position in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
-            if k in itemPropertyMap.keys():
+            if key in itemPropertyMap.keys():
                 if position in quotedFields:
-                    print('appending {0}'.format(itemPropertyMap[k]))
-                    itemProperties.append('"{0}"'.format(itemPropertyMap[k]))
+                    itemProperties.append('"{0}"'.format(itemPropertyMap[key]))
                 else:
-                    print('Safe Casting and appending {0}'.format(itemPropertyMap[k]))
-                    itemProperties.append(safeIntCast(itemPropertyMap[k]))
+                    itemProperties.append(safeIntCast(itemPropertyMap[key]))
             else:
-                print('appending place holder')
                 itemProperties.append('')
 
         line = ','.join(itemProperties).replace(';', ',')
@@ -737,7 +729,7 @@ def displayColumnSelection():
         col = 0
         if k not in checkVarMap:
             checkVarMap[k] = Variable()
-        if k != 'id':
+        if k != 'id' and k[:-3] != 'reserved':
             if counter % 2 == 0:
                 col = 0
                 row_count += 1

@@ -31,7 +31,8 @@ class MenuItem:
                 'taxIncluded':'Tax Included', 'itemGrp':'Item Group',
                 'receipt':'Receipt Text', 'priceOver':'Allow Price Override',
                 'choiceGrps':'Choice Groups', 'ktchnPrint':'Kitchen Printers',
-                'covers':'Covers', 'storeID':'Store ID'}
+                'covers':'Covers', 'storeID':'Store ID', 'reserved_18': '',
+                'reserved_28': ''}
                 
     integerItems = ['classID', 'revCat', 'taxGrp', 'securityLvl', 'reportCat',
                         'byWeight', 'pricePrompt', 'prntOnChk', 'disc',

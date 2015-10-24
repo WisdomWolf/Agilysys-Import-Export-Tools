@@ -21,8 +21,9 @@ __version__ = 'v0.10.7'
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
-fileTypeFilters = [('Supported Files', '.xls .xlsx .txt'), ('Text Files', '.txt'),
-                   ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
+file_type_filters = [('Supported Files', '.xls .xlsx .txt'),
+                     ('Text Files', '.txt'),
+                     ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 app_directory = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
 config_file = os.path.join(app_directory, 'config.ini')
 log_file = os.path.join(app_directory, 'errors.log')
@@ -55,7 +56,7 @@ def open_file(options=None):
     if not options:
         options = dict()
         options['defaultextension'] = '.xls*, .txt'
-        options['filetypes'] = fileTypeFilters
+        options['filetypes'] = file_type_filters
         options['title'] = 'Open...'
         options['initialdir'] = init_dir
     file_opt = options
@@ -71,14 +72,15 @@ def open_file(options=None):
             for button in simplifyButtons:
                 showButton(button)
         else:
-            showButton(thatButton)
+            showButton(ig_button)
 
         config['Paths'] = {'last dir': file_path}
         with open(config_file, 'w') as f:
             config.write(f)
 
     except IOError:
-        messagebox.showinfo(title='Oops', message='This file is not supported.')
+        messagebox.showinfo(title='Oops',
+                            message='This file is not supported.')
         print('{0}\n{1}'.format(sys.exc_info()[0], sys.exc_info()[1]))
         return
 
@@ -96,7 +98,7 @@ def fixArray(match, ):
     return match.replace(",", ";")
 
 
-def preParse(file_name):
+def pre_parse_ig_file(file_name):
     with codecs.open(file_name, 'r', 'latin-1') as export:
         print('pre-parse initiated')
         for line in export:
@@ -115,11 +117,13 @@ def preParse(file_name):
             except IndexError:
                 response = None
                 if item[1]:
-                    response = messagebox.askokcancel(title='Error reading file',
-                                                      message='Unable to parse line {0}'.format(item[1]))
+                    response = messagebox.askokcancel(
+                        title='Error reading file',
+                        message='Unable to parse line {0}'.format(item[1]))
                 else:
-                    response = messagebox.askokcancel(title='Error reading file',
-                                                      message='Unable to parse info:\n' + line)
+                    response = messagebox.askokcancel(
+                        title='Error reading file',
+                        message='Unable to parse info:\n' + line)
                 if not response:
                     os._exit(1)
             # Skip Store Items
@@ -136,72 +140,9 @@ def enumeratePriceLevels():
     #  if no item contains all prices
     for item in itemList:
         levels = item.separatePriceLevels()
-        if max(k for k,_ in levels.items()) > numberOfPriceLevels:
-            numberOfPriceLevels = max(k for k,_ in levels.items())
+        if max(k for k, _ in levels.items()) > numberOfPriceLevels:
+            numberOfPriceLevels = max(k for k, _ in levels.items())
     return numberOfPriceLevels
-
-
-def generateSimpleExport(save_file, items=None, excludeUnpriced=True):
-    items = items or itemList
-    print('Generating Simple Export')
-    simpleOutput = codecs.open(save_file, 'w+', 'utf8')
-
-    for item in items:
-        if excludeUnpriced:
-            if item.priceLvls != "{}":
-                simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLvls) + "\r\n")
-        else:
-            simpleOutput.write(str(item.id) + "," + str(item.name) + "," + str(item.priceLvls) + "\r\n")
-
-    messagebox.showinfo(title='Success', message='Simplified item export created successfully.')
-
-
-def generateSimpleExcel(save_file, items=None, excludeUnpriced=True):
-    items = items or itemList
-    print('Generating Simple Excel')
-
-    book = Workbook()
-    heading = easyxf(
-        'font: bold True;'
-        'alignment: horizontal center;'
-    )
-    sheet = book.add_sheet('Sheet 1')
-    sheet.panes_frozen = True
-    sheet.remove_splits = True
-    sheet.horz_split_pos = 1
-    row1 = sheet.row(0)
-    row1.write(0, 'ID', heading)
-    row1.write(1, 'Name', heading)
-
-    numberOfPriceLevels = enumeratePriceLevels()
-
-    # Write Column Headings
-    for x in range(1, (numberOfPriceLevels + 1)):
-        col = x + 1
-        row1.write(col, 'Price Level ' + str(x), heading)
-        sheet.col(col).width = 4260
-
-    # Write items
-    for i, item in zip(range(1, len(items) + 1), items):
-        if excludeUnpriced:
-            if item.priceLvls == "{}":
-                continue
-        else:
-            row = sheet.row(i)
-            row.write(0, str(item.id))
-            row.write(1, str(item.name).strip('"'))
-            for p in range(1, (numberOfPriceLevels + 1)):
-                if p in item.separatePriceLevels():
-                    price = item.separatePriceLevels()[p]
-                else:
-                    price = ''
-                row.write((p + 1), str(price))
-
-    sheet.col(1).width = 12780
-    book.save(save_file)
-
-    messagebox.showinfo(title='Success',
-                        message='Simplified excel sheet created successfully.')
 
 
 # noinspection PyShadowingNames
@@ -273,31 +214,54 @@ def generateFullExcel(save_file, items=None,
                 r = p - 1
                 row.write(columnMap['priceLvls'] + r, str(price))
 
-            row.write(columnMap['classID'] + (numberOfPriceLevels - 1), safeIntCast(item.classID))
-            row.write(columnMap['revCat'] + (numberOfPriceLevels - 1), safeIntCast(item.revCat))
-            row.write(columnMap['taxGrp'] + (numberOfPriceLevels - 1), safeIntCast(item.taxGrp))
-            row.write(columnMap['securityLvl'] + (numberOfPriceLevels - 1), safeIntCast(item.securityLvl))
-            row.write(columnMap['reportCat'] + (numberOfPriceLevels - 1), safeIntCast(item.reportCat))
-            row.write(columnMap['byWeight'] + (numberOfPriceLevels - 1), safeIntCast(item.byWeight))
-            row.write(columnMap['tare'] + (numberOfPriceLevels - 1), str(item.tare))
-            row.write(columnMap['sku'] + (numberOfPriceLevels - 1), str(item.sku))
-            row.write(columnMap['gunCode'] + (numberOfPriceLevels - 1), str(item.gunCode))
-            row.write(columnMap['cost'] + (numberOfPriceLevels - 1), str(item.cost))
+            row.write(columnMap['classID'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.classID))
+            row.write(columnMap['revCat'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.revCat))
+            row.write(columnMap['taxGrp'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.taxGrp))
+            row.write(columnMap['securityLvl'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.securityLvl))
+            row.write(columnMap['reportCat'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.reportCat))
+            row.write(columnMap['byWeight'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.byWeight))
+            row.write(columnMap['tare'] + (numberOfPriceLevels - 1),
+                      str(item.tare))
+            row.write(columnMap['sku'] + (numberOfPriceLevels - 1),
+                      str(item.sku))
+            row.write(columnMap['gunCode'] + (numberOfPriceLevels - 1),
+                      str(item.gunCode))
+            row.write(columnMap['cost'] + (numberOfPriceLevels - 1),
+                      str(item.cost))
             row.write(columnMap['cost'] + numberOfPriceLevels, 'N/A')
-            row.write(columnMap['pricePrompt'] + (numberOfPriceLevels - 1), safeIntCast(item.pricePrompt))
-            row.write(columnMap['prntOnChk'] + (numberOfPriceLevels - 1), safeIntCast(item.prntOnChk))
-            row.write(columnMap['disc'] + (numberOfPriceLevels - 1), safeIntCast(item.disc))
-            row.write(columnMap['voidable'] + (numberOfPriceLevels - 1), safeIntCast(item.voidable))
-            row.write(columnMap['inactive'] + (numberOfPriceLevels - 1), safeIntCast(item.inactive))
-            row.write(columnMap['taxIncluded'] + (numberOfPriceLevels - 1), safeIntCast(item.taxIncluded))
-            row.write(columnMap['itemGrp'] + (numberOfPriceLevels - 1), safeIntCast(item.itemGrp))
-            row.write(columnMap['receipt'] + (numberOfPriceLevels - 1), str(item.receipt))
-            row.write(columnMap['priceOver'] + (numberOfPriceLevels - 1), safeIntCast(item.priceOver))
+            row.write(columnMap['pricePrompt'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.pricePrompt))
+            row.write(columnMap['prntOnChk'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.prntOnChk))
+            row.write(columnMap['disc'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.disc))
+            row.write(columnMap['voidable'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.voidable))
+            row.write(columnMap['inactive'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.inactive))
+            row.write(columnMap['taxIncluded'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.taxIncluded))
+            row.write(columnMap['itemGrp'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.itemGrp))
+            row.write(columnMap['receipt'] + (numberOfPriceLevels - 1),
+                      str(item.receipt))
+            row.write(columnMap['priceOver'] + (numberOfPriceLevels - 1),
+                      safeIntCast(item.priceOver))
             row.write(columnMap['priceOver'] + numberOfPriceLevels, 'N/A')
-            row.write(columnMap['choiceGrps'] + (numberOfPriceLevels - 1), str(item.choiceGrps))
-            row.write(columnMap['ktchnPrint'] + (numberOfPriceLevels - 1), str(item.ktchnPrint))
-            row.write(columnMap['covers'] + (numberOfPriceLevels - 1), str(item.covers))
-            row.write(columnMap['storeID'] + (numberOfPriceLevels - 1), str(item.storeID))
+            row.write(columnMap['choiceGrps'] + (numberOfPriceLevels - 1),
+                      str(item.choiceGrps))
+            row.write(columnMap['ktchnPrint'] + (numberOfPriceLevels - 1),
+                      str(item.ktchnPrint))
+            row.write(columnMap['covers'] + (numberOfPriceLevels - 1),
+                      str(item.covers))
+            row.write(columnMap['storeID'] + (numberOfPriceLevels - 1),
+                      str(item.storeID))
         else:
             row.write(columnMap['priceLvls'], str(item.priceLvls))
             row.write(columnMap['classID'], safeIntCast(item.classID))
@@ -332,7 +296,8 @@ def generateFullExcel(save_file, items=None,
 
     try:
         book.save(save_file)
-        messagebox.showinfo(title='Success', message='Excel export created successfully.')
+        messagebox.showinfo(title='Success',
+                            message='Excel export created successfully.')
     except PermissionError:
         messagebox.showerror(title='Error', message='Unable to save file')
 
@@ -357,7 +322,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
     colKeys = ['modType', 'id']
     pricePos = 100
 
-    for k, v in sorted(checkVarMap.items(), key=lambda x: MenuItem.attributeMap.get(x[0])):
+    for k, v in sorted(checkVarMap.items(),
+                       key=lambda x: MenuItem.attributeMap.get(x[0])):
         if str(v.get()) == '1':
             headers.append(MenuItem.textMap[k])
             colKeys.append(k)
@@ -373,7 +339,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
             priceHeaders.append('Price Level ' + str(x + 1))
 
         priceHeaders.reverse()
-        for i, x in zip(reversed(range(1, len(priceHeaders) + 1)), priceHeaders):
+        for i, x in zip(reversed(range(1, len(priceHeaders) + 1)),
+                        priceHeaders):
             headers.insert(pricePos, x)
             colKeys.insert(pricePos, ('priceLvl' + str(i)))
 
@@ -421,58 +388,6 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
         messagebox.showerror(title='Error', message='Unable to save file')
 
 
-def generateIGPriceUpdate(inputFile, updateFile):
-    print('preparing to generate IG Price Update file')
-    if inputFile[-3:] == 'xls' or inputFile[-4:] == 'xlsx':
-        print('generating IG Update from xls')
-        book = open_workbook(inputFile)
-        sheet = book.sheet_by_index(0)
-        if sheet.cell_value(1, 0) == 'modType':
-            generateCustomIGUpdate(book, updateFile)
-            return
-        if sheet.ncols > 3:
-            if sheet.cell_value(1, 1):
-                generateIGUpdate(book, updateFile)
-                return
-            print('Extra Price Levels found.')
-            for row in range(1, sheet.nrows):
-                prices = []
-                isNegative = False
-                for col in range(2, sheet.ncols):
-                    if sheet.cell_value(row, col) != '':
-                        priceLevelNumber = str(col - 1) + ','
-                        if '(' in str(sheet.cell_value(row, col)) or \
-                                        '(' in str(sheet.cell_value(row, col)):
-                            isNegative = True
-                        price = '{0:.2f}'.format(float(str(sheet.cell_value(row, col))
-                                                       .strip('$()')))
-                        if isNegative:
-                            priceLevel = priceLevelNumber + '($' + price + ')'
-                        else:
-                            priceLevel = priceLevelNumber + '$' + price
-                        prices.append(priceLevel)
-                price_import = '{' + ','.join(prices) + '}'
-                line = '\"U\",{0},,,,,{1},,,,,,,,,,,,,,,,,\r\n'.format(
-                    str(sheet.cell_value(row, 0)), str(price_import))
-                updateFile.write(line)
-        else:
-            print('Processing with a single price level')
-            for row in range(1, sheet.nrows):
-                line = '\"U\",{0},,,,,{1},,,,,,,,,,,,,,,,,\r\n'.format(
-                    str(sheet.cell_value(row, 0)), str(sheet.cell_value(row, 2)))
-    else:
-        print('generating IG Update from txt or csv')
-        with codecs.open(file_path, 'r', 'latin-1') as file:
-            for x in file:
-                details = x.split(",")
-                details[2] = details[2].replace(";", ",").strip("\r\n")
-                line = '\"U\",{0},,,,,{1},,,,,,,,,,,,,,,,,\r\n'.format(str(details[0]),
-                                                                       str(details[2]))
-                updateFile.write(line)
-
-    messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
-
-
 def generateIGUpdate(book, updateFile):
     print('preparing to generate IG Update file')
     sheet = book.sheet_by_index(0)
@@ -488,11 +403,14 @@ def generateIGUpdate(book, updateFile):
     for row in range(2, sheet.nrows):
         itemProperties = []
         updateType = sheet.cell_value(row, 1)
-        if updateType != 'A' and updateType != 'U' and updateType != 'D' and updateType != 'X':
+        if updateType != 'A' and updateType != 'U' and\
+                        updateType != 'D' and updateType != 'X':
             continue
         elif updateType == 'X':
-            messagebox.showwarning(title='File Error',
-                                   message='One or more lines are not aligned properly.\nPlease correct and retry.')
+            messagebox.showwarning(
+                title='File Error',
+                message='One or more lines are not aligned properly.'
+                        '\nPlease correct and retry.')
             return
         else:
             itemProperties.append('"' + str(sheet.cell_value(row, 1)) + '"')
@@ -503,7 +421,8 @@ def generateIGUpdate(book, updateFile):
             for _ in range(emptySpaces):
                 itemProperties.append('')
             if col in quotedFields:
-                itemProperties.append('"' + str(sheet.cell_value(row, col)) + '"')
+                itemProperties.append(
+                    '"' + str(sheet.cell_value(row, col)) + '"')
             else:
                 itemProperties.append(safeIntCast(sheet.cell_value(row, col)))
             previousIndex = col
@@ -513,7 +432,8 @@ def generateIGUpdate(book, updateFile):
         line = ",".join(itemProperties).replace(";", ",")
         updateFile.write(line + "\r\n")
 
-    messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+    messagebox.showinfo(title='Success',
+                        message='IG Item Import created successfully.')
 
 
 def generateCustomIGUpdate(book, updateFile):
@@ -526,11 +446,14 @@ def generateCustomIGUpdate(book, updateFile):
         itemPropertyMap = {}
         priceLevelMap = {}
         update_type = sheet.cell_value(row, 0)
-        if update_type != 'A' and update_type != 'U' and update_type != 'D' and update_type != 'X':
+        if update_type != 'A' and update_type != 'U' and \
+                        update_type != 'D' and update_type != 'X':
             continue
         elif update_type == 'X':
-            messagebox.showwarning(title='File Error',
-                                   message='One or more lines are not aligned properly.\nPlease correct and retry.')
+            messagebox.showwarning(
+                title='File Error',
+                message='One or more lines are not aligned properly.'
+                        '\nPlease correct and retry.')
             return
         else:
             itemProperties.append('"{0}"'.format(update_type))
@@ -545,7 +468,8 @@ def generateCustomIGUpdate(book, updateFile):
         if priceLevelMap:
             itemPropertyMap['priceLvls'] = rebuildPriceRecord(priceLevelMap)
 
-        for key, position in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
+        for key, position in sorted(MenuItem.attributeMap.items(),
+                                    key=lambda x: x[1]):
             if key in itemPropertyMap.keys():
                 if position in quotedFields:
                     itemProperties.append('"{0}"'.format(itemPropertyMap[key]))
@@ -558,19 +482,26 @@ def generateCustomIGUpdate(book, updateFile):
         updateFile.write(line + '\r\n')
 
     # adding sentinel item
-    updateFile.write('"A",7110001,"{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(time.strftime('%c', time.localtime())))
+    updateFile.write(
+        '"A",7110001,"{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(
+            time.strftime('%c', time.localtime())))
     if updated_items:
-        messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+        messagebox.showinfo(title='Success',
+                            message='IG Item Import created successfully.')
     else:
-        messagebox.showinfo(title='Oops', message="No items processed.  Did you remember to put a 'U' or 'A' in the first column?")
+        messagebox.showinfo(
+            title='Oops',
+            message="No items processed.  "
+                    "Did you remember to put a 'U' or 'A'"
+                    " in the first column?")
 
 
-def determineExportType(f):
-    if f[-3:] == 'xls':
+def determineExportType(filename):
+    if filename[-3:] == 'xls':
         print('Input file is xls, processing as SIMPLE_EXPORT')
         return SIMPLE_EXPORT
-    elif f[-3:] == 'txt':
-        file = codecs.open(f, 'r', 'utf8')
+    elif filename[-3:] == 'txt':
+        file = codecs.open(filename, 'r', 'utf8')
         if len(file.readline().split(",")) > 20:
             return IG_EXPORT
         else:
@@ -580,87 +511,59 @@ def determineExportType(f):
 
 
 # Use lambda: runConversion(x) to pass values with button command call
-def runConversion():
+def convert_to_ig_format():
     export = file_path
 
-    options = {'title': 'Save As', 'initialfile': os.path.join(os.path.dirname(file_path),'MI_IMP.txt')}
+    options = {
+        'title': 'Save As',
+        'initialfile': os.path.join(os.path.dirname(file_path), 'MI_IMP.txt')
+        }
+
     save_file = saveFile(options)
     if save_file:
         with codecs.open(save_file, 'w+', 'latin-1') as output:
             generateIGPriceUpdate(export, output)
 
 
-def convertToText():
-    print('simplifying to txt')
+def convert_to_excel(type='custom'):
+    """
+    Initiates conversion from IG Format to Excel spreadsheet
+
+    Keyword arguments:
+    type -- full or custom spreadsheet
+
+    :return:
+
+    """
     export = file_path
 
     try:
-        preParse(export)
+        pre_parse_ig_file(export)
     except UnicodeDecodeError:
         with codecs.open(file_path, 'r', 'latin-1') as export:
-            preParse(export)
-    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
+            pre_parse_ig_file(export)
+
+    file_parts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
+
+    if type == 'complete':
+        default_filename = file_parts[0] + '_complete.xls'
+    elif type == 'custom':
+        default_filename = file_parts[0] + '_custom.xls'
+        displayColumnSelection()
+        root.wait_window(csWin)
+    else:
+        raise TypeError("Can't convert to excel using {0} type".format(type))
+
     options = {'title': 'Save As',
-               'initialfile': str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_simplified.txt',
-               'filetypes': fileTypeFilters}
+               'initialfile': os.path.join(os.path.dirname(file_path),
+                                           default_filename),
+               'filetypes': file_type_filters}
     save_file = saveFile(options)
-    if save_file:
-        generateSimpleExport(save_file, excludeUnpriced=noUnpriced.get())
 
-
-def convertToExcelSimple():
-    print('simplifying to excel')
-    export = file_path
-
-    try:
-        preParse(export)
-    except UnicodeDecodeError:
-        with codecs.open(file_path, 'r', 'latin-1') as export:
-            preParse(export)
-    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
-    options = {'title': 'Save As',
-               'initialfile': str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_simplified.xls',
-               'filetypes': fileTypeFilters}
-    save_file = saveFile(options)
-    if save_file:
-        generateSimpleExcel(save_file, excludeUnpriced=noUnpriced.get())
-
-
-def convertToExcelFull():
-    print('converting to excel')
-    export = file_path
-
-    try:
-        preParse(export)
-    except UnicodeDecodeError:
-        with codecs.open(file_path, 'r', 'latin-1') as export:
-            preParse(export)
-    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
-    options = {'title': 'Save As',
-               'initialfile': str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_complete.xls',
-               'filetypes': fileTypeFilters}
-    save_file = saveFile(options)
-    if save_file:
-        generateFullExcel(save_file, excludeUnpriced=noUnpriced.get(), expandPriceLevels=expandPriceLevels.get())
-
-
-def convertToExcelCustom():
-    print('customizing for excel')
-    export = file_path
-
-    try:
-        preParse(export)
-    except UnicodeDecodeError:
-        with codecs.open(file_path, 'r', 'latin-1') as export:
-            preParse(export)
-
-    displayColumnSelection()
-    root.wait_window(csWin)
-    fileParts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
-    options = {'title': 'Save As', 'initialfile': str(os.path.dirname(file_path)) + '/' + fileParts[0] + '_custom.xls',
-               'filetypes': fileTypeFilters}
-    save_file = saveFile(options)
-    if save_file:
+    if save_file and type == 'complete':
+        generateFullExcel(save_file, excludeUnpriced=noUnpriced.get(),
+                          expandPriceLevels=expandPriceLevels.get())
+    elif save_file and type == 'custom':
         generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get())
 
 
@@ -669,7 +572,7 @@ def rebuildPriceRecord(priceMap):
     isNegative = False
     for k, v in sorted(priceMap.items()):
         if v != '':
-            # Strip number from priceLvl key and pass to index of separatePriceLevels
+            # Strip number from priceLvl and pass to index of separatePriceLevels
             p = str(k[k.find('l') + 1:])
             level = ''
             if '(' in str(v) or '(' in str(v):
@@ -699,9 +602,7 @@ def hideButton(button):
 
 
 def hideAllButtons():
-    thatButton.grid_remove()
-    simpleTxtButton.grid_remove()
-    simpleXlsButton.grid_remove()
+    ig_button.grid_remove()
     fullXlsButton.grid_remove()
     customXlsButton.grid_remove()
 
@@ -715,6 +616,11 @@ def displayAbout():
 
 
 def displayColumnSelection():
+    """
+    Display sub window for selecting properties to include in Excel spreadsheet
+    :return:
+    """
+
     global csWin
     csWin = Toplevel(root)
     colSelectFrame = ttk.Frame(csWin)
@@ -729,21 +635,48 @@ def displayColumnSelection():
     for k, v in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
         col = 0
         if k not in checkVarMap:
-            checkVarMap[k] = Variable()
+            checkVarMap[k] = IntVar()
         if k != 'id' and k[:-3] != 'reserved':
             if counter % 2 == 0:
                 col = 0
                 row_count += 1
             else:
                 col = 3
-            l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k], variable=checkVarMap[k]).grid(column=col,
-                                                                                                        row=row_count,
-                                                                                                        sticky=(N, W))
+            l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k],
+                                variable=checkVarMap[k]).grid(column=col,
+                                                              row=row_count,
+                                                              sticky=(N, W))
             counter += 1
 
-    ttk.Button(colSelectFrame, text='OK', command=csWin.destroy).grid(column=1, row=100)
+    ttk.Button(colSelectFrame, text='OK',
+               command=csWin.destroy).grid(column=1, row=100)
+    ttk.Button(colSelectFrame, text='Select All',
+               command=select_all_properties)
     return
 
+
+def select_all_properties():
+    """
+    Selects all properties in checkVarMap
+    :return:
+    """
+    global checkVarMap
+
+    for k,v in MenuItem.attributeMap.items():
+        if k not in checkVarMap:
+            checkVarMap[k] = IntVar()
+        checkVarMap[k].set(1)
+
+
+def show_var_states(ttk_var):
+    if type(ttk_var) is dict:
+        for k,v in ttk_var.items():
+            print('{0}: {1}'.format(k, v.get()))
+    elif type(ttk_var) is list:
+        for item in ttk_var:
+            print('{0}: {1}'.format(item, item.get()))
+    else:
+        print('{0}: {1}'.format(ttk_var, ttk_var.get()))
 
 root = Tk()
 root.option_add('*tearOff', FALSE)
@@ -776,8 +709,13 @@ menubar.add_cascade(menu=menu_help, label='Help')
 menu_file.add_command(label='Open...', command=open_file)
 menu_file.add_command(label='Close', command=root.quit)
 
-menu_options.add_checkbutton(label='Remove Unpriced Items', variable=noUnpriced, onvalue=1, offvalue=0)
-menu_options.add_checkbutton(label='Separate Price Level', variable=expandPriceLevels, onvalue=1, offvalue=0)
+menu_options.add_checkbutton(label='Remove Unpriced Items',
+                             variable=noUnpriced, onvalue=1, offvalue=0)
+menu_options.add_checkbutton(label='Separate Price Level',
+                             variable=expandPriceLevels, onvalue=1, offvalue=0)
+menu_options.add_command(label='Select All', command=select_all_properties)
+menu_options.add_command(label='Display Vars',
+                         command=lambda: show_var_states(checkVarMap))
 
 menu_help.add_command(label='About', command=displayAbout)
 
@@ -786,28 +724,25 @@ mainframe.grid(column=0, row=1, sticky=(N, W, E, S))
 mainframe.columnconfigure(0, weight=1)
 mainframe.rowconfigure(1, weight=1)
 
-ttk.Label(mainframe, text="Input File:").grid(column=1, row=1, sticky=(N, W, E))
+ttk.Label(mainframe, text="Input File:").grid(
+    column=1, row=1, sticky=(N, W, E))
 openFile_entry = ttk.Entry(mainframe, width=40, textvariable=openFileString)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
 # Use lambda: runConversion(x) to pass values with button command call
-global thatButton, simpleTxtButton, simpleXlsButton, fullXlsButton
-thatButton = ttk.Button(mainframe, text='Generate IG Update', command=runConversion)
-thatButton.grid(column=1, row=3)
+ig_button = ttk.Button(mainframe, text='Generate IG Update',
+                       command=convert_to_ig_format)
+ig_button.grid(column=1, row=3)
 
-simpleTxtButton = ttk.Button(mainframe, text='Create txt', command=convertToText)
-simpleTxtButton.grid(column=1, row=4)
-
-simpleXlsButton = ttk.Button(mainframe, text='Create Prices xls', command=convertToExcelSimple)
-simpleXlsButton.grid(column=1, row=5)
-
-fullXlsButton = ttk.Button(mainframe, text='Create Full xls', command=convertToExcelFull)
+fullXlsButton = ttk.Button(mainframe, text='Create Full xls',
+                           command=lambda: convert_to_excel('complete'))
 fullXlsButton.grid(column=1, row=6)
 
-customXlsButton = ttk.Button(mainframe, text='Create Custom xls', command=convertToExcelCustom)
+customXlsButton = ttk.Button(mainframe, text='Create Custom xls',
+                             command=lambda: convert_to_excel('custom'))
 customXlsButton.grid(column=1, row=7)
 
-simplifyButtons = [simpleTxtButton, simpleXlsButton, fullXlsButton, customXlsButton]
+simplifyButtons = [fullXlsButton, customXlsButton]
 
 for child in mainframe.winfo_children():
     child.grid_configure(padx=5, pady=5)

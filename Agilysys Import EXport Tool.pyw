@@ -5,6 +5,9 @@
 
 import os
 import codecs
+import datetime
+import pdb
+import time
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
 from configparser import ConfigParser
@@ -14,7 +17,7 @@ from xlrd import open_workbook
 
 from MenuItem import MenuItem
 
-__version__ = 'v0.6.29'
+__version__ = 'v0.10.7'
 
 priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
@@ -59,9 +62,10 @@ def open_file(options=None):
     global file_path
     file_path = filedialog.askopenfilename(**file_opt)
     options = None
-    if file_path is None or file_path == "":
+    if not file_path or file_path == "":
         print("No file selected")
         return
+
     try:
         if determineExportType(file_path) == IG_EXPORT:
             for button in simplifyButtons:
@@ -99,20 +103,31 @@ def preParse(file_name):
             itemDetails = re.sub(priceArrayMatch, fixArray, line)
             itemDetails = re.sub(commaQuoteMatch, fixArray, itemDetails)
             item = itemDetails.split(",")
-            i = MenuItem(
-                item[1], item[2], item[3], item[4], item[5],
-                item[6], item[7], item[8], item[9], item[10],
-                item[11], item[12], item[13], item[14], item[15],
-                item[16], item[18], item[19], item[20], item[21],
-                item[22], item[23], item[24], item[25], item[26],
-                item[28], item[29], item[30], item[31]
-            )
+            try:
+                i = MenuItem(
+                    item[1], item[2], item[3], item[4], item[5],
+                    item[6], item[7], item[8], item[9], item[10],
+                    item[11], item[12], item[13], item[14], item[15],
+                    item[16], item[18], item[19], item[20], item[21],
+                    item[22], item[23], item[24], item[25], item[26],
+                    item[28], item[29], item[30], item[31]
+                )
+            except IndexError:
+                response = None
+                if item[1]:
+                    response = messagebox.askokcancel(title='Error reading file',
+                                                      message='Unable to parse line {0}'.format(item[1]))
+                else:
+                    response = messagebox.askokcancel(title='Error reading file',
+                                                      message='Unable to parse info:\n' + line)
+                if not response:
+                    os._exit(1)
             # Skip Store Items
             if str(i.storeID) == '0':
                 itemList.append(i)
             else:
                 continue
-    print("completed")
+    print("parse completed")
 
 
 def enumeratePriceLevels():
@@ -120,8 +135,9 @@ def enumeratePriceLevels():
     # Seems to still miss price levels above range and has potential for issues
     #  if no item contains all prices
     for item in itemList:
-        if len(item.separatePriceLevels()) > numberOfPriceLevels:
-            numberOfPriceLevels = len(item.separatePriceLevels())
+        levels = item.separatePriceLevels()
+        if max(k for k,_ in levels.items()) > numberOfPriceLevels:
+            numberOfPriceLevels = max(k for k,_ in levels.items())
     return numberOfPriceLevels
 
 
@@ -346,16 +362,12 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
             headers.append(MenuItem.textMap[k])
             colKeys.append(k)
 
-    print('Maps created...')
-
     if 'Prices' in headers:
-        print('priceLvls found in headers')
         pricePos = headers.index('Prices')
         del headers[pricePos]
         del colKeys[pricePos]
         numberOfPriceLevels = enumeratePriceLevels()
         priceHeaders = []
-        print(str(numberOfPriceLevels) + ' price levels found.')
 
         for x in range(numberOfPriceLevels):
             priceHeaders.append('Price Level ' + str(x + 1))
@@ -367,7 +379,6 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
 
     # Write Headers
     for h, x, i in zip(headers, colKeys, range(len(headers))):
-        print('writing header: ' + str(h))
         row1.write(i, h, heading)
         row2.write(i, x, heading)
 
@@ -381,7 +392,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
         row = sheet.row(r)
 
         # Write item values to columns
-        for col, key in zip(range(len(colKeys)), colKeys):
+        for col, key in enumerate(colKeys):
             if 'priceLvl' in key:
                 # Strip number from priceLvl key and pass to index of separatePriceLevels
                 p = int(key[key.find('l') + 1:])
@@ -506,23 +517,24 @@ def generateIGUpdate(book, updateFile):
 
 
 def generateCustomIGUpdate(book, updateFile):
-    print('preparing to generate IG Update file from custom xls')
     sheet = book.sheet_by_index(0)
     quotedFields = (3, 4, 5, 26)
+    updated_items = 0
 
     for row in range(2, sheet.nrows):
         itemProperties = []
         itemPropertyMap = {}
         priceLevelMap = {}
-        updateType = sheet.cell_value(row, 0)
-        if updateType != 'A' and updateType != 'U' and updateType != 'D' and updateType != 'X':
+        update_type = sheet.cell_value(row, 0)
+        if update_type != 'A' and update_type != 'U' and update_type != 'D' and update_type != 'X':
             continue
-        elif updateType == 'X':
+        elif update_type == 'X':
             messagebox.showwarning(title='File Error',
                                    message='One or more lines are not aligned properly.\nPlease correct and retry.')
             return
         else:
-            itemProperties.append('"' + updateType + '"')
+            itemProperties.append('"{0}"'.format(update_type))
+            updated_items += 1
 
         for col in range(1, sheet.ncols):
             key = sheet.cell_value(1, col)
@@ -533,21 +545,24 @@ def generateCustomIGUpdate(book, updateFile):
         if priceLevelMap:
             itemPropertyMap['priceLvls'] = rebuildPriceRecord(priceLevelMap)
 
-        for k, v in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
-            if k in itemPropertyMap.keys():
-                if v in quotedFields:
-                    itemProperties.append('"' + str(itemPropertyMap[k]) + '"')
+        for key, position in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
+            if key in itemPropertyMap.keys():
+                if position in quotedFields:
+                    itemProperties.append('"{0}"'.format(itemPropertyMap[key]))
                 else:
-                    itemProperties.append(safeIntCast(itemPropertyMap[k]))
+                    itemProperties.append(safeIntCast(itemPropertyMap[key]))
             else:
                 itemProperties.append('')
 
-        itemProperties.append('')
-        itemProperties.append('')  # appending two additional comma for parity
         line = ','.join(itemProperties).replace(';', ',')
         updateFile.write(line + '\r\n')
 
-    messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+    # adding sentinel item
+    updateFile.write('"A",7110001,"{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(time.strftime('%c', time.localtime())))
+    if updated_items:
+        messagebox.showinfo(title='Success', message='IG Item Import created successfully.')
+    else:
+        messagebox.showinfo(title='Oops', message="No items processed.  Did you remember to put a 'U' or 'A' in the first column?")
 
 
 def determineExportType(f):
@@ -564,10 +579,11 @@ def determineExportType(f):
         raise IOError('UnsupportedFileExtensionError')
 
 
+# Use lambda: runConversion(x) to pass values with button command call
 def runConversion():
     export = file_path
 
-    options = {'title': 'Save As', 'initialfile': str(os.path.dirname(file_path)) + '/' + 'MI_IMP.txt'}
+    options = {'title': 'Save As', 'initialfile': os.path.join(os.path.dirname(file_path),'MI_IMP.txt')}
     save_file = saveFile(options)
     if save_file:
         with codecs.open(save_file, 'w+', 'latin-1') as output:
@@ -658,7 +674,7 @@ def rebuildPriceRecord(priceMap):
             level = ''
             if '(' in str(v) or '(' in str(v):
                 isNegative = True
-            price = '{0:.2f}'.format(float(str(v).strip('$()')))
+            price = '{0:.2f}'.format(float(str(v).strip('$(){}')))
             if isNegative:
                 level = p + ',($' + price + ')'
             else:
@@ -714,7 +730,7 @@ def displayColumnSelection():
         col = 0
         if k not in checkVarMap:
             checkVarMap[k] = Variable()
-        if k != 'id':
+        if k != 'id' and k[:-3] != 'reserved':
             if counter % 2 == 0:
                 col = 0
                 row_count += 1
@@ -774,6 +790,7 @@ ttk.Label(mainframe, text="Input File:").grid(column=1, row=1, sticky=(N, W, E))
 openFile_entry = ttk.Entry(mainframe, width=40, textvariable=openFileString)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
+# Use lambda: runConversion(x) to pass values with button command call
 global thatButton, simpleTxtButton, simpleXlsButton, fullXlsButton
 thatButton = ttk.Button(mainframe, text='Generate IG Update', command=runConversion)
 thatButton.grid(column=1, row=3)

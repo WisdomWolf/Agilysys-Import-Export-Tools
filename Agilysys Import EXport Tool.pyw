@@ -16,6 +16,10 @@ from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
 from MenuItem import MenuItem
+pretty_print_text_map = MenuItem.pretty_print_text_map
+ig_field_sequence = MenuItem.ig_field_sequence
+integer_fields = MenuItem.integer_fields
+string_fields = MenuItem.string_fields
 
 __version__ = 'v0.10.7'
 
@@ -31,9 +35,7 @@ config = ConfigParser()
 config.read(config_file)
 
 IG_EXPORT = 1
-SIMPLE_EXPORT = 3
-UNKNOWN_EXPORT = 10
-CSV_EXPORT = 2
+EXCEL_FILE = 3
 itemList = []
 itemMap = {}
 
@@ -43,7 +45,7 @@ def ez_print(string):
 
 
 def open_file(options=None):
-    hideAllButtons()
+    hide_all_buttons()
     init_dir = ''
     if itemList:
         itemList.clear()
@@ -60,21 +62,21 @@ def open_file(options=None):
         options['title'] = 'Open...'
         options['initialdir'] = init_dir
     file_opt = options
-    global file_path
-    file_path = filedialog.askopenfilename(**file_opt)
+    global in_file
+    in_file = filedialog.askopenfilename(**file_opt)
     options = None
-    if not file_path or file_path == "":
+    if not in_file or in_file == "":
         print("No file selected")
         return
 
     try:
-        if determineExportType(file_path) == IG_EXPORT:
+        if get_file_type(in_file) == IG_EXPORT:
             for button in simplifyButtons:
-                showButton(button)
+                show_button(button)
         else:
-            showButton(ig_button)
+            show_button(button_ig)
 
-        config['Paths'] = {'last dir': file_path}
+        config['Paths'] = {'last dir': in_file}
         with open(config_file, 'w') as f:
             config.write(f)
 
@@ -127,19 +129,18 @@ def pre_parse_ig_file(file_name):
                 if not response:
                     os._exit(1)
             # Skip Store Items
-            if str(i.storeID) == '0':
+            if str(i.store_id) == '0':
                 itemList.append(i)
             else:
                 continue
     print("parse completed")
 
 
+# Might be worth moving this to MenuItem class
 def enumeratePriceLevels():
-    numberOfPriceLevels = 0
-    # Seems to still miss price levels above range and has potential for issues
-    #  if no item contains all prices
+    """Returns total number of price levels"""
     for item in itemList:
-        levels = item.separatePriceLevels()
+        levels = item.separate_price_levels()
         if max(k for k, _ in levels.items()) > numberOfPriceLevels:
             numberOfPriceLevels = max(k for k, _ in levels.items())
     return numberOfPriceLevels
@@ -148,6 +149,7 @@ def enumeratePriceLevels():
 # noinspection PyShadowingNames
 def generateFullExcel(save_file, items=None,
                       excludeUnpriced=True, expandPriceLevels=False):
+    """Legacy function to convert IG Export to complete Excel spreadsheet."""
     items = items or itemList
     print('preparing to convert to Excel')
     book = Workbook()
@@ -193,104 +195,103 @@ def generateFullExcel(save_file, items=None,
         row1.write(i, h, heading)
 
     for i, item in zip(range(2, len(items) + 2), items):
-        global isMisaligned
-        isMisaligned = False
-        columnMap = MenuItem.attributeMap
+        global row_is_misaligned
+        row_is_misaligned = False
 
         row = sheet.row(i)
         # row.write(2, int(item.id))
-        row.write(columnMap['id'], int(item.id))
-        row.write(columnMap['name'], str(item.name))
-        row.write(columnMap['abbr1'], str(item.abbr1))
-        row.write(columnMap['abbr2'], str(item.abbr2))
-        row.write(columnMap['printerLabel'], str(item.printerLabel))
+        row.write(ig_field_sequence['id'], int(item.id))
+        row.write(ig_field_sequence['name'], str(item.name))
+        row.write(ig_field_sequence['abbr1'], str(item.abbr1))
+        row.write(ig_field_sequence['abbr2'], str(item.abbr2))
+        row.write(ig_field_sequence['print_label'], str(item.printerLabel))
 
         if expandPriceLevels:
             for p in range(1, (numberOfPriceLevels + 1)):
-                if p in item.separatePriceLevels():
-                    price = item.separatePriceLevels()[p]
+                if p in item.separate_price_levels():
+                    price = item.separate_price_levels()[p]
                 else:
                     price = ''
                 r = p - 1
-                row.write(columnMap['priceLvls'] + r, str(price))
+                row.write(ig_field_sequence['price_levels'] + r, str(price))
 
-            row.write(columnMap['classID'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['product_class'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.classID))
-            row.write(columnMap['revCat'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['revenue_category'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.revCat))
-            row.write(columnMap['taxGrp'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['tax_group'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.taxGrp))
-            row.write(columnMap['securityLvl'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['security_level'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.securityLvl))
-            row.write(columnMap['reportCat'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['report_category'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.reportCat))
-            row.write(columnMap['byWeight'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['sell_by_weight'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.byWeight))
-            row.write(columnMap['tare'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['tare'] + (numberOfPriceLevels - 1),
                       str(item.tare))
-            row.write(columnMap['sku'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['sku'] + (numberOfPriceLevels - 1),
                       str(item.sku))
-            row.write(columnMap['gunCode'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['gun_code'] + (numberOfPriceLevels - 1),
                       str(item.gunCode))
-            row.write(columnMap['cost'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['cost'] + (numberOfPriceLevels - 1),
                       str(item.cost))
-            row.write(columnMap['cost'] + numberOfPriceLevels, 'N/A')
-            row.write(columnMap['pricePrompt'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['cost'] + numberOfPriceLevels, 'N/A')
+            row.write(ig_field_sequence['prompt_for_price'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.pricePrompt))
-            row.write(columnMap['prntOnChk'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['print_on_check'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.prntOnChk))
-            row.write(columnMap['disc'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['is_discountable'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.disc))
-            row.write(columnMap['voidable'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['voidable'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.voidable))
-            row.write(columnMap['inactive'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['inactive'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.inactive))
-            row.write(columnMap['taxIncluded'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['tax_included'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.taxIncluded))
-            row.write(columnMap['itemGrp'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['item_group'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.itemGrp))
-            row.write(columnMap['receipt'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['receipt_text'] + (numberOfPriceLevels - 1),
                       str(item.receipt))
-            row.write(columnMap['priceOver'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['allow_price_override'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.priceOver))
-            row.write(columnMap['priceOver'] + numberOfPriceLevels, 'N/A')
-            row.write(columnMap['choiceGrps'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['allow_price_override'] + numberOfPriceLevels, 'N/A')
+            row.write(ig_field_sequence['choice_groups'] + (numberOfPriceLevels - 1),
                       str(item.choiceGrps))
-            row.write(columnMap['ktchnPrint'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['kitchen_printers'] + (numberOfPriceLevels - 1),
                       str(item.ktchnPrint))
-            row.write(columnMap['covers'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['covers'] + (numberOfPriceLevels - 1),
                       str(item.covers))
-            row.write(columnMap['storeID'] + (numberOfPriceLevels - 1),
+            row.write(ig_field_sequence['store_id'] + (numberOfPriceLevels - 1),
                       str(item.storeID))
         else:
-            row.write(columnMap['priceLvls'], str(item.priceLvls))
-            row.write(columnMap['classID'], safeIntCast(item.classID))
-            row.write(columnMap['revCat'], safeIntCast(item.revCat))
-            row.write(columnMap['taxGrp'], safeIntCast(item.taxGrp))
-            row.write(columnMap['securityLvl'], safeIntCast(item.securityLvl))
-            row.write(columnMap['reportCat'], safeIntCast(item.reportCat))
-            row.write(columnMap['byWeight'], safeIntCast(item.byWeight))
-            row.write(columnMap['tare'], str(item.tare))
-            row.write(columnMap['sku'], str(item.sku))
-            row.write(columnMap['gunCode'], str(item.gunCode))
-            row.write(columnMap['cost'], str(item.cost))
-            row.write(columnMap['cost'] + 1, 'N/A')
-            row.write(columnMap['pricePrompt'], safeIntCast(item.pricePrompt))
-            row.write(columnMap['prntOnChk'], safeIntCast(item.prntOnChk))
-            row.write(columnMap['disc'], safeIntCast(item.disc))
-            row.write(columnMap['voidable'], safeIntCast(item.voidable))
-            row.write(columnMap['inactive'], safeIntCast(item.inactive))
-            row.write(columnMap['taxIncluded'], safeIntCast(item.taxIncluded))
-            row.write(columnMap['itemGrp'], safeIntCast(item.itemGrp))
-            row.write(columnMap['receipt'], str(item.receipt))
-            row.write(columnMap['priceOver'], safeIntCast(item.priceOver))
-            row.write(columnMap['priceOver'] + 1, 'N/A')
-            row.write(columnMap['choiceGrps'], str(item.choiceGrps))
-            row.write(columnMap['ktchnPrint'], str(item.ktchnPrint))
-            row.write(columnMap['covers'], str(item.covers))
-            row.write(columnMap['storeID'], str(item.storeID))
+            row.write(ig_field_sequence['price_levels'], str(item.priceLvls))
+            row.write(ig_field_sequence['product_class'], safeIntCast(item.classID))
+            row.write(ig_field_sequence['revenue_category'], safeIntCast(item.revCat))
+            row.write(ig_field_sequence['tax_group'], safeIntCast(item.taxGrp))
+            row.write(ig_field_sequence['security_level'], safeIntCast(item.securityLvl))
+            row.write(ig_field_sequence['report_category'], safeIntCast(item.reportCat))
+            row.write(ig_field_sequence['sell_by_weight'], safeIntCast(item.byWeight))
+            row.write(ig_field_sequence['tare'], str(item.tare))
+            row.write(ig_field_sequence['sku'], str(item.sku))
+            row.write(ig_field_sequence['gun_code'], str(item.gunCode))
+            row.write(ig_field_sequence['cost'], str(item.cost))
+            row.write(ig_field_sequence['cost'] + 1, 'N/A')
+            row.write(ig_field_sequence['prompt_for_price'], safeIntCast(item.pricePrompt))
+            row.write(ig_field_sequence['print_on_check'], safeIntCast(item.prntOnChk))
+            row.write(ig_field_sequence['is_discountable'], safeIntCast(item.disc))
+            row.write(ig_field_sequence['voidable'], safeIntCast(item.voidable))
+            row.write(ig_field_sequence['inactive'], safeIntCast(item.inactive))
+            row.write(ig_field_sequence['tax_included'], safeIntCast(item.taxIncluded))
+            row.write(ig_field_sequence['item_group'], safeIntCast(item.itemGrp))
+            row.write(ig_field_sequence['receipt_text'], str(item.receipt))
+            row.write(ig_field_sequence['allow_price_override'], safeIntCast(item.priceOver))
+            row.write(ig_field_sequence['allow_price_override'] + 1, 'N/A')
+            row.write(ig_field_sequence['choice_groups'], str(item.choiceGrps))
+            row.write(ig_field_sequence['kitchen_printers'], str(item.ktchnPrint))
+            row.write(ig_field_sequence['covers'], str(item.covers))
+            row.write(ig_field_sequence['store_id'], str(item.storeID))
 
-        if isMisaligned:
+        if row_is_misaligned:
             oopsStyle = (easyxf('pattern: pattern solid, fore_color rose'))
             row.write(1, 'X', oopsStyle)
 
@@ -322,10 +323,10 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
     colKeys = ['modType', 'id']
     pricePos = 100
 
-    for k, v in sorted(checkVarMap.items(),
-                       key=lambda x: MenuItem.attributeMap.get(x[0])):
+    for k, v in sorted(checkbox_variable_map.items(),
+                       key=lambda x: ig_field_sequence.get(x[0])):
         if str(v.get()) == '1':
-            headers.append(MenuItem.textMap[k])
+            headers.append(pretty_print_text_map[k])
             colKeys.append(k)
 
     if 'Prices' in headers:
@@ -353,8 +354,8 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
 
     # Write Rows
     for r, item in zip(range(2, len(items) + 2), items):
-        global isMisaligned
-        isMisaligned = False
+        global row_is_misaligned
+        row_is_misaligned = False
 
         row = sheet.row(r)
 
@@ -363,21 +364,21 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
             if 'priceLvl' in key:
                 # Strip number from priceLvl key and pass to index of separatePriceLevels
                 p = int(key[key.find('l') + 1:])
-                if p in item.separatePriceLevels():
-                    price = item.separatePriceLevels()[p]
+                if p in item.separate_price_levels():
+                    price = item.separate_price_levels()[p]
                 else:
                     price = ''
 
                 row.write(col, str(price))
             else:
-                if key in MenuItem.integerItems:
+                if key in integer_fields:
                     row.write(col, safeIntCast(item.__dict__[key]))
                 elif key == 'modType':
                     continue
                 else:
                     row.write(col, str(item.__dict__[key]))
 
-        if isMisaligned:
+        if row_is_misaligned:
             row.write(0, 'X', oopsStyle)
 
     try:
@@ -388,8 +389,10 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
         messagebox.showerror(title='Error', message='Unable to save file')
 
 
-def generateIGUpdate(book, updateFile):
-    print('preparing to generate IG Update file')
+def generateIGUpdate(excel_file, ig_text_file):
+    """Legacy function for generating IG import from full Excel workbook."""
+    print('preparing to generate IG Update file using legacy function')
+
     sheet = book.sheet_by_index(0)
     includeColumns = set()
     quotedFields = (3, 4, 5, 26)
@@ -430,21 +433,25 @@ def generateIGUpdate(book, updateFile):
             for _ in range(32 - len(itemProperties)):
                 itemProperties.append('')
         line = ",".join(itemProperties).replace(";", ",")
-        updateFile.write(line + "\r\n")
+        ig_text_file.write(line + "\r\n")
 
     messagebox.showinfo(title='Success',
                         message='IG Item Import created successfully.')
 
 
-def generateCustomIGUpdate(book, updateFile):
+def generate_ig_import(book, ig_text_file):
+    """Generates IG Import File from custom Excel workbook.
+
+    Keyword arguments:
+    book -- Excel workbook (custom)
+    ig_text_file -- text file to be generated for Agilysys
+    """
     sheet = book.sheet_by_index(0)
     quotedFields = (3, 4, 5, 26)
     updated_items = 0
 
     for row in range(2, sheet.nrows):
-        itemProperties = []
-        itemPropertyMap = {}
-        priceLevelMap = {}
+        item_properties = []
         update_type = sheet.cell_value(row, 0)
         if update_type != 'A' and update_type != 'U' and \
                         update_type != 'D' and update_type != 'X':
@@ -456,33 +463,33 @@ def generateCustomIGUpdate(book, updateFile):
                         '\nPlease correct and retry.')
             return
         else:
-            itemProperties.append('"{0}"'.format(update_type))
+            item_properties.append('"{0}"'.format(update_type))
             updated_items += 1
 
         for col in range(1, sheet.ncols):
             key = sheet.cell_value(1, col)
             if 'priceLvl' in key:
-                priceLevelMap[key] = sheet.cell_value(row, col)
-            itemPropertyMap[key] = (sheet.cell_value(row, col))
+                priceLevelMap = {key: sheet.cell_value(row, col)}
+            itemPropertyMap= {key: (sheet.cell_value(row, col))}
 
         if priceLevelMap:
-            itemPropertyMap['priceLvls'] = rebuildPriceRecord(priceLevelMap)
+            itemPropertyMap['price_levels'] = build_ig_price_array(priceLevelMap)
 
-        for key, position in sorted(MenuItem.attributeMap.items(),
+        for key, position in sorted(ig_field_sequence.items(),
                                     key=lambda x: x[1]):
             if key in itemPropertyMap.keys():
                 if position in quotedFields:
-                    itemProperties.append('"{0}"'.format(itemPropertyMap[key]))
+                    item_properties.append('"{0}"'.format(itemPropertyMap[key]))
                 else:
-                    itemProperties.append(safeIntCast(itemPropertyMap[key]))
+                    item_properties.append(safeIntCast(itemPropertyMap[key]))
             else:
-                itemProperties.append('')
+                item_properties.append('')
 
-        line = ','.join(itemProperties).replace(';', ',')
-        updateFile.write(line + '\r\n')
+        line = ','.join(item_properties).replace(';', ',')
+        ig_text_file.write(line + '\r\n')
 
     # adding sentinel item
-    updateFile.write(
+    ig_text_file.write(
         '"A",7110001,"{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(
             time.strftime('%c', time.localtime())))
     if updated_items:
@@ -496,66 +503,71 @@ def generateCustomIGUpdate(book, updateFile):
                     " in the first column?")
 
 
-def determineExportType(filename):
-    if filename[-3:] == 'xls':
-        print('Input file is xls, processing as SIMPLE_EXPORT')
-        return SIMPLE_EXPORT
-    elif filename[-3:] == 'txt':
+def get_file_type(filename):
+    """Return the file type for filename"""
+    if filename.rsplit('.', maxsplit=1)[1] == 'xls':
+        print('Input file is xls, processing as EXCEL_FILE')
+        return EXCEL_FILE
+    elif filename.rsplit('.', maxsplit=1)[1] == 'txt':
         file = codecs.open(filename, 'r', 'utf8')
         if len(file.readline().split(",")) > 20:
             return IG_EXPORT
         else:
-            return SIMPLE_EXPORT
+            raise IOError('File is corrupt or contains incomplete data.')
     else:
-        raise IOError('UnsupportedFileExtensionError')
+        raise IOError('Unsupported file extension')
 
 
-# Use lambda: runConversion(x) to pass values with button command call
 def convert_to_ig_format():
-    export = file_path
-
+    """Initiates conversion from Excel spreadsheet to IG text file"""
+    text_file = in_file
     options = {
         'title': 'Save As',
-        'initialfile': os.path.join(os.path.dirname(file_path), 'MI_IMP.txt')
+        'initialfile': os.path.join(os.path.dirname(in_file), 'MI_IMP.txt')
         }
-
     save_file = saveFile(options)
     if save_file:
-        with codecs.open(save_file, 'w+', 'latin-1') as output:
-            generateIGPriceUpdate(export, output)
+        with codecs.open(save_file, 'w+', 'latin-1') as text_file:
+            file_extension = file.rsplit('.', maxsplit=1)[1]
+
+        if file_extension == 'xls' or file_extension == 'xlsx':
+            book = open_workbook(file)
+            sheet = book.sheet_by_index(0)
+            if book.nsheets > 1:
+                generate_standardized_ig_imports(book, text_file)
+            elif sheet.cell_value(1, 0) == 'modType':
+                generate_ig_import(book, text_file)
+            else:
+                generateIGUpdate(book, text_file)
 
 
 def convert_to_excel(type='custom'):
-    """
-    Initiates conversion from IG Format to Excel spreadsheet
+    """Initiates conversion from IG Format to Excel spreadsheet
 
     Keyword arguments:
     type -- full or custom spreadsheet
-
-    :return:
-
     """
-    export = file_path
+    export = in_file
 
     try:
         pre_parse_ig_file(export)
     except UnicodeDecodeError:
-        with codecs.open(file_path, 'r', 'latin-1') as export:
+        with codecs.open(in_file, 'r', 'latin-1') as export:
             pre_parse_ig_file(export)
 
-    file_parts = str(os.path.basename(file_path)).rsplit('.', maxsplit=1)
+    file_parts = str(os.path.basename(in_file)).rsplit('.', maxsplit=1)
 
     if type == 'complete':
         default_filename = file_parts[0] + '_complete.xls'
     elif type == 'custom':
         default_filename = file_parts[0] + '_custom.xls'
-        displayColumnSelection()
+        display_item_property_selections()
         root.wait_window(csWin)
     else:
         raise TypeError("Can't convert to excel using {0} type".format(type))
 
     options = {'title': 'Save As',
-               'initialfile': os.path.join(os.path.dirname(file_path),
+               'initialfile': os.path.join(os.path.dirname(in_file),
                                            default_filename),
                'filetypes': file_type_filters}
     save_file = saveFile(options)
@@ -567,60 +579,63 @@ def convert_to_excel(type='custom'):
         generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get())
 
 
-def rebuildPriceRecord(priceMap):
+def build_ig_price_array(price_map):
+    """Returns IG price array from dictionary of price levels."""
+
     prices = []
-    isNegative = False
-    for k, v in sorted(priceMap.items()):
-        if v != '':
-            # Strip number from priceLvl and pass to index of separatePriceLevels
-            p = str(k[k.find('l') + 1:])
-            level = ''
-            if '(' in str(v) or '(' in str(v):
-                isNegative = True
-            price = '{0:.2f}'.format(float(str(v).strip('$(){}')))
-            if isNegative:
-                level = p + ',($' + price + ')'
+    for price_level, price in sorted(price_map.items()):
+        if price != '':
+            # Extract number from priceLvl
+            level = str(price_level[price_level.find('l') + 1:])
+            price_sequence = ''
+            if '(' in str(price) or '(' in str(price):
+                price_is_negative = True
+            price = '{0:.2f}'.format(float(str(price).strip('$(){}')))
+            if price_is_negative:
+                price_sequence = level + ',($' + price + ')'
             else:
-                level = p + ',$' + price
-            prices.append(level)
+                price_sequence = level + ',$' + price
+            prices.append(price_sequence)
 
     record = '{' + ','.join(prices) + '}'
     return record
 
 
 def safeIntCast(value):
+    """
+    Attempts to cast value to an integer, falls back to a string if it fails.
+    Will also set row_is_misaligned to True if int cast fails.
+    """
+
     try:
         return str(int(value))
     except ValueError:
-        global isMisaligned
-        isMisaligned = True
+        global row_is_misaligned
+        row_is_misaligned = True
         return str(value)
 
 
-def hideButton(button):
+def hide_button(button):
     button.grid_remove()
 
 
-def hideAllButtons():
-    ig_button.grid_remove()
-    fullXlsButton.grid_remove()
-    customXlsButton.grid_remove()
+def hide_all_buttons():
+    for b in hideable_buttons:
+        hide_button(b)
 
 
-def showButton(button):
+def show_button(button):
     button.grid()
 
 
-def displayAbout():
+def display_about():
     messagebox.showinfo(title='About', message=__version__)
 
 
-def displayColumnSelection():
+def display_item_property_selections():
     """
     Display sub window for selecting properties to include in Excel spreadsheet
-    :return:
     """
-
     global csWin
     csWin = Toplevel(root)
     colSelectFrame = ttk.Frame(csWin)
@@ -628,24 +643,23 @@ def displayColumnSelection():
     colSelectFrame.columnconfigure(0, weight=1)
     colSelectFrame.rowconfigure(1, weight=1)
 
-    global checkVarMap
+    global checkbox_variable_map
     row_count = 0
     counter = 0
 
-    for k, v in sorted(MenuItem.attributeMap.items(), key=lambda x: x[1]):
+    for k, v in sorted(ig_field_sequence.items(), key=lambda x: x[1]):
         col = 0
-        if k not in checkVarMap:
-            checkVarMap[k] = IntVar()
+        if k not in checkbox_variable_map:
+            checkbox_variable_map[k] = IntVar()
         if k != 'id' and k[:-3] != 'reserved':
             if counter % 2 == 0:
                 col = 0
                 row_count += 1
             else:
                 col = 3
-            l = ttk.Checkbutton(colSelectFrame, text=MenuItem.textMap[k],
-                                variable=checkVarMap[k]).grid(column=col,
-                                                              row=row_count,
-                                                              sticky=(N, W))
+            l = ttk.Checkbutton(colSelectFrame, text=pretty_print_text_map[k],
+                                variable=checkbox_variable_map[k]).grid(
+                                    column=col, row=row_count, sticky=(N, W))
             counter += 1
 
     ttk.Button(colSelectFrame, text='OK',
@@ -656,19 +670,17 @@ def displayColumnSelection():
 
 
 def select_all_properties():
-    """
-    Selects all properties in checkVarMap
-    :return:
-    """
-    global checkVarMap
+    """Selects all properties in checkVarMap"""
+    global checkbox_variable_map
 
-    for k,v in MenuItem.attributeMap.items():
-        if k not in checkVarMap:
-            checkVarMap[k] = IntVar()
-        checkVarMap[k].set(1)
+    for k,v in MenuItem.ig_field_sequence.items():
+        if k not in checkbox_variable_map:
+            checkbox_variable_map[k] = IntVar()
+        checkbox_variable_map[k].set(1)
 
 
 def show_var_states(ttk_var):
+    """prints state of ttk variables."""
     if type(ttk_var) is dict:
         for k,v in ttk_var.items():
             print('{0}: {1}'.format(k, v.get()))
@@ -678,19 +690,29 @@ def show_var_states(ttk_var):
     else:
         print('{0}: {1}'.format(ttk_var, ttk_var.get()))
 
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+
+    return os.path.join(os.path.abspath("."), relative_path)
+
+
 root = Tk()
 root.option_add('*tearOff', FALSE)
 root.title("Agilysys Import Export Tool")
+ICON = resource_path('resources/Format_Gears.ico')
 try:
-    root.iconbitmap(default='Format_Gears.ico')
+    root.iconbitmap(default=ICON)
 except TclError:
-    print('Unable to locate icon')
+    print('Unable to locate icon at {0}'.format(ICON))
 
 openFileString = StringVar()
 noUnpriced = BooleanVar()
 expandPriceLevels = BooleanVar()
 colPrice = BooleanVar()
-checkVarMap = {}
+checkbox_variable_map = {}
 
 if not os.path.exists(app_directory):
     os.mkdir(app_directory)
@@ -715,9 +737,9 @@ menu_options.add_checkbutton(label='Separate Price Level',
                              variable=expandPriceLevels, onvalue=1, offvalue=0)
 menu_options.add_command(label='Select All', command=select_all_properties)
 menu_options.add_command(label='Display Vars',
-                         command=lambda: show_var_states(checkVarMap))
+                         command=lambda: show_var_states(checkbox_variable_map))
 
-menu_help.add_command(label='About', command=displayAbout)
+menu_help.add_command(label='About', command=display_about)
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=1, sticky=(N, W, E, S))
@@ -729,24 +751,24 @@ ttk.Label(mainframe, text="Input File:").grid(
 openFile_entry = ttk.Entry(mainframe, width=40, textvariable=openFileString)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
-# Use lambda: runConversion(x) to pass values with button command call
-ig_button = ttk.Button(mainframe, text='Generate IG Update',
+button_ig = ttk.Button(mainframe, text='Generate IG Update',
                        command=convert_to_ig_format)
-ig_button.grid(column=1, row=3)
+button_ig.grid(column=1, row=3)
 
-fullXlsButton = ttk.Button(mainframe, text='Create Full xls',
+button_excel_complete = ttk.Button(mainframe, text='Create Full xls',
                            command=lambda: convert_to_excel('complete'))
-fullXlsButton.grid(column=1, row=6)
+button_excel_complete.grid(column=1, row=6)
 
-customXlsButton = ttk.Button(mainframe, text='Create Custom xls',
+button_excel_custom = ttk.Button(mainframe, text='Create Custom xls',
                              command=lambda: convert_to_excel('custom'))
-customXlsButton.grid(column=1, row=7)
+button_excel_custom.grid(column=1, row=7)
 
-simplifyButtons = [fullXlsButton, customXlsButton]
+simplifyButtons = [button_excel_complete, button_excel_custom]
+hideable_buttons = [button_excel_complete, button_excel_custom, button_ig]
 
 for child in mainframe.winfo_children():
     child.grid_configure(padx=5, pady=5)
 
 root.config(menu=menubar)
-hideAllButtons()
+hide_all_buttons()
 root.mainloop()

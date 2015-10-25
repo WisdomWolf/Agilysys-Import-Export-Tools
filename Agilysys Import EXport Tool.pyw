@@ -26,6 +26,7 @@ __version__ = 'v0.10.24'
 
 PRICE_ARRAY_REGEX = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 QUOTED_COMMAS_REGEX = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
+PRICE_COLUMN = 8
 file_type_filters = [('Supported Files', '.xls .xlsx .txt'),
                      ('Text Files', '.txt'),
                      ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
@@ -141,14 +142,14 @@ def pre_parse_ig_file(file_name):
 
 
 # Might be worth moving this to MenuItem class
-def enumeratePriceLevels():
+def get_price_level_count():
     """Returns total number of price levels"""
-    numberOfPriceLevels = 0
+    num_price_levels = 0
     for item in itemList:
         levels = item.separate_price_levels()
-        if max(k for k, _ in levels.items()) > numberOfPriceLevels:
-            numberOfPriceLevels = max(k for k, _ in levels.items())
-    return numberOfPriceLevels
+        if max(k for k, _ in levels.items()) > num_price_levels:
+            num_price_levels = max(k for k, _ in levels.items())
+    return num_price_levels
 
 
 # noinspection PyShadowingNames
@@ -184,7 +185,7 @@ def generateFullExcel(excel_file, items=None,
         endHeaders = headers[7:]
         headers.clear()
         priceHeaders = []
-        numberOfPriceLevels = enumeratePriceLevels()
+        numberOfPriceLevels = get_price_level_count()
 
         for x in range(0, numberOfPriceLevels):
             priceHeaders.append('Price Level ' + str(x + 1))
@@ -347,7 +348,7 @@ def generate_custom_excel_spreadsheet(
         pricePos = headers.index('Prices')
         del headers[pricePos]
         del keynames[pricePos]
-        num_price_levels = enumeratePriceLevels()
+        num_price_levels = get_price_level_count()
         price_headers = []
 
         for key in range(num_price_levels):
@@ -465,7 +466,6 @@ def generate_ig_import(book, ig_text_file):
     updated_items = 0
 
     for row in range(2, sheet.nrows):
-        print('extracting row {0}'.format(row))
         item_properties = []
         item_property_map = dict()
         price_level_map = dict()
@@ -484,30 +484,24 @@ def generate_ig_import(book, ig_text_file):
             updated_items += 1
 
         for col in range(1, sheet.ncols):
-            print('extracting column {0} in row {1}'.format(col, row))
             key = sheet.cell_value(1, col)
             if 'priceLvl' in key:
                 price_level_map[key] = sheet.cell_value(row, col)
             item_property_map[key] = sheet.cell_value(row, col)
 
         if price_level_map:
-            print('price level map exists')
-            item_property_map['price_levels'] = build_ig_price_array(price_level_map)
+            item_property_map['price_levels'] = \
+                build_ig_price_array(price_level_map)
 
         for key, field in sorted(IG_FIELD_SEQUENCE.items(),
                                     key=lambda x: x[1]):
-            print('looking over IG fields')
             if key in item_property_map.keys():
-                print('found {0} in item properties'.format(key))
                 if field in STRING_FIELDS:
-                    print('{0} is a string field'.format(key))
                     item_properties.append('"{0}"'.format(
                         item_property_map[key]))
                 else:
-                    print('{0} is NOT a string'.format(key))
                     item_properties.append(safeIntCast(item_property_map[key]))
             else:
-                print('{0} not in item properties'.format(key))
                 item_properties.append('')
 
         line = ','.join(item_properties).replace(';', ',')
@@ -526,6 +520,114 @@ def generate_ig_import(book, ig_text_file):
             message="No items processed.  "
                     "Did you remember to put a 'U' or 'A'"
                     " in the first column?")
+
+#TODO Correct/Replace save path selection
+#TODO Ensure no item id overlap
+#TODO Get better records for revenue categories
+def generate_standardized_ig_imports(book, base_filename):
+    """Generates IG import files from POS Configuration Worksheet.
+
+    Keyword arguments:
+    book -- Excel workbook
+    base_filename -- filename used as base for priced and unpriced output files
+    """
+    print('Generating standardized IG Import files')
+    sheet = book.sheet_by_name('Menu Items & Pricing')
+    ig_sheet = book.sheet_by_name('InfoGenesis')
+    product_sheet = book.sheet_by_name('Product Classes')
+    revenue_sheet = book.sheet_by_name('Revenue Categories')
+    category_sheet = book.sheet_by_name('Categories')
+    product_classes = get_product_classes(category_sheet)
+    revenue_categories = get_revenue_categories(revenue_sheet)
+    base = base_filename.rsplit('.', maxsplit=1)[0]
+    ig_priced_file = '{0}_priced.txt'.format(base)
+    ig_unpriced_file = '{0}_unpriced.txt'.format(base)
+
+    max_item_id = int(ig_sheet.cell_value(ig_sheet.nrows - 1, 1))
+    last_item_id = 1
+    item_ids = set()
+
+    for row in range(5, sheet.nrows):
+        fields = []
+        price_map = dict()
+        update_type = 'A'
+        prices = '{1,$0.00}'
+
+        for col in range(1, 8):
+            property = sheet.cell_value(row, col)
+            fields.append(property)
+        for price_level in range(8, sheet.ncols):
+            level = price_level - 7
+            if sheet.cell_value(row, price_level) == '':
+                continue
+            else:
+                price = sheet.cell_value(row, price_level)
+            price_map[level] = price
+
+        #pdb.set_trace()
+        if price_map:
+            prices = build_ig_price_array(price_map)
+
+        try:
+            revenue_category = revenue_categories[fields[5]]
+        except KeyError:
+            #print('Unable to get value for {0} category'.format(fields[5]))
+            revenue_category = None
+
+        try:
+            product_class = product_classes[fields[6]]
+        except KeyError:
+            print('Unable to get value for {0} product class'.format(fields[6]))
+            product_class = None
+
+        item_id = fields[0]
+        if item_id in item_ids:
+            raise IndexError('duplicate id used')
+        if item_id > max_item_id or last_item_id < item_id < 1000000:
+            item_id = last_item_id
+            last_item_id += 1
+
+        item = MenuItem(id=item_id, name=fields[3],
+                        revenue_category=revenue_category,
+                        product_class=product_class, sku=fields[2],
+                        priceLvls=prices)
+        line = '"{0}",{1}\n'.format(update_type, item)
+        if price_map:
+            with open(ig_priced_file, 'a+') as output:
+                output.write(line)
+        else:
+            with open(ig_unpriced_file, 'a+') as output:
+                output.write(line)
+
+    print('IG import file creations complete.')
+    messagebox.showinfo(title='Success',
+                            message='IG import files created successfully.')
+
+
+def get_revenue_categories(sheet):
+    revenue_categories = dict()
+    for row in range(1, sheet.nrows):
+        try:
+            revenue_categories[sheet.cell_value(row, 1)] = \
+                sheet.cell_value(row, 0)
+        except IndexError:
+            print("oops, couldn't read row {0} from Revenue Categories".format(
+                row))
+
+    return revenue_categories
+
+
+def get_product_classes(sheet):
+    product_classes = dict()
+    for row in range(1, sheet.nrows):
+        try:
+            product_classes[sheet.cell_value(row, 0)] = \
+                sheet.cell_value(row, 1)
+        except IndexError:
+            print("oops, couldn't read row {0} from Product Classes".format(
+                row))
+
+    return product_classes
 
 
 def get_file_type(filename):
@@ -558,7 +660,7 @@ def convert_to_ig_format():
                 book = open_workbook(in_file)
                 sheet = book.sheet_by_index(0)
                 if book.nsheets > 1:
-                    generate_standardized_ig_imports(book, text_file)
+                    generate_standardized_ig_imports(book, file_save_path)
                 elif sheet.cell_value(1, 0) == 'modType':
                     generate_ig_import(book, text_file)
                 else:
@@ -610,15 +712,18 @@ def build_ig_price_array(price_map):
     for price_level, price in sorted(price_map.items()):
         if price != '':
             # Extract number from priceLvl
-            level = str(price_level[price_level.find('l') + 1:])
+            if type(price_level) == str:
+                level = str(price_level[price_level.find('l') + 1:])
+            else:
+                level = price_level
             price_sequence = ''
             if '(' in str(price) or ')' in str(price):
                 price_is_negative = True
             price = '{0:.2f}'.format(float(str(price).strip('$(){}')))
             if price_is_negative:
-                price_sequence = level + ',($' + price + ')'
+                price_sequence = '{0},(${1})'.format(level, price)
             else:
-                price_sequence = level + ',$' + price
+                price_sequence = '{0},${1}'.format(level, price)
             prices.append(price_sequence)
 
     record = '{' + ','.join(prices) + '}'

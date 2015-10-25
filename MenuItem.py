@@ -7,7 +7,7 @@ quoteMatch = re.compile(r'(^"+|"+$)')
 class MenuItem:
     """An object to simplify item property assignment"""
 
-    ig_field_sequence = {
+    IG_FIELD_SEQUENCE = {
         'id': 2, 'name': 3, 'abbr1': 4, 'abbr2': 5,
         'print_label': 6, 'price_levels': 7, 'product_class': 8,
         'revenue_category': 9, 'tax_group': 10, 'security_level': 11,
@@ -21,7 +21,7 @@ class MenuItem:
         'kitchen_printers': 30, 'covers': 31, 'store_id': 32
     }
     
-    pretty_print_text_map = {
+    TEXT_HEADERS = {
         'id':'ID', 'name':'Name', 'abbr1':'Abbr1', 'abbr2':'Abbr2',
         'print_label':'Printer Label', 'price_levels':'Prices',
         'revenue_category':'Revenue Category', 'tax_group':'Tax Group',
@@ -39,18 +39,18 @@ class MenuItem:
         'reserved_28': ''
     }
                 
-    integer_fields = [
+    INTEGER_FIELDS = [
         'product_class', 'revenue_category', 'tax_group', 'security_level',
         'report_category','sell_by_weight', 'prompt_for_price',
         'print_on_check', 'is_discountable','voidable', 'inactive',
         'tax_included', 'item_group', 'allow_price_override'
     ]
 
-    string_fields = (
-        ig_field_sequence['name'],
-        ig_field_sequence['abbr1'],
-        ig_field_sequence['abbr2'],
-        ig_field_sequence['receipt_text']
+    STRING_FIELDS = (
+        IG_FIELD_SEQUENCE['name'],
+        IG_FIELD_SEQUENCE['abbr1'],
+        IG_FIELD_SEQUENCE['abbr2'],
+        IG_FIELD_SEQUENCE['receipt_text']
     )
     
     def __init__(
@@ -106,8 +106,8 @@ class MenuItem:
 
     def __str__(self):
         item_properties = []
-        for key, position in sorted(self.ig_field_sequence.items(), key=lambda x: x[1]):
-            if position in self.string_fields:
+        for key, position in sorted(self.IG_FIELD_SEQUENCE.items(), key=lambda x: x[1]):
+            if position in self.STRING_FIELDS:
                 item_properties.append('"{0}"'.format(getattr(self, key)))
             else:
                 item_properties.append(str(getattr(self, key)))

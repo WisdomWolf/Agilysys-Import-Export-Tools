@@ -16,23 +16,24 @@ from xlwt import Workbook, easyxf
 from xlrd import open_workbook
 
 from MenuItem import MenuItem
-pretty_print_text_map = MenuItem.pretty_print_text_map
-ig_field_sequence = MenuItem.ig_field_sequence
-integer_fields = MenuItem.integer_fields
-string_fields = MenuItem.string_fields
+
+TEXT_HEADERS = MenuItem.TEXT_HEADERS
+IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
+INTEGER_FIELDS = MenuItem.INTEGER_FIELDS
+STRING_FIELDS = MenuItem.STRING_FIELDS
 
 __version__ = 'v0.10.7'
 
-priceArrayMatch = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
-commaQuoteMatch = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
+PRICE_ARRAY_REGEX = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
+QUOTED_COMMAS_REGEX = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
 file_type_filters = [('Supported Files', '.xls .xlsx .txt'),
                      ('Text Files', '.txt'),
                      ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
-app_directory = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
-config_file = os.path.join(app_directory, 'config.ini')
-log_file = os.path.join(app_directory, 'errors.log')
+APP_DIR = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
+CONFIG_FILE = os.path.join(APP_DIR, 'config.ini')
+LOG_FILE = os.path.join(APP_DIR, 'errors.log')
 config = ConfigParser()
-config.read(config_file)
+config.read(CONFIG_FILE)
 
 IG_EXPORT = 1
 EXCEL_FILE = 3
@@ -47,6 +48,9 @@ def ez_print(string):
 def open_file(options=None):
     hide_all_buttons()
     init_dir = ''
+    global checkbox_variable_map, all_boxes_selected
+    all_boxes_selected = False
+    checkbox_variable_map = {}
     if itemList:
         itemList.clear()
 
@@ -77,7 +81,7 @@ def open_file(options=None):
             show_button(button_ig)
 
         config['Paths'] = {'last dir': in_file}
-        with open(config_file, 'w') as f:
+        with open(CONFIG_FILE, 'w') as f:
             config.write(f)
 
     except IOError:
@@ -95,7 +99,8 @@ def saveFile(options):
     return save_file
 
 
-def fixArray(match, ):
+def replace_commas(match, ):
+    """returns string with semi-colon substitutes for matched commas."""
     match = str(match.group(0))
     return match.replace(",", ";")
 
@@ -104,8 +109,8 @@ def pre_parse_ig_file(file_name):
     with codecs.open(file_name, 'r', 'latin-1') as export:
         print('pre-parse initiated')
         for line in export:
-            itemDetails = re.sub(priceArrayMatch, fixArray, line)
-            itemDetails = re.sub(commaQuoteMatch, fixArray, itemDetails)
+            itemDetails = re.sub(PRICE_ARRAY_REGEX, replace_commas, line)
+            itemDetails = re.sub(QUOTED_COMMAS_REGEX, replace_commas, itemDetails)
             item = itemDetails.split(",")
             try:
                 i = MenuItem(
@@ -139,6 +144,7 @@ def pre_parse_ig_file(file_name):
 # Might be worth moving this to MenuItem class
 def enumeratePriceLevels():
     """Returns total number of price levels"""
+    numberOfPriceLevels = 0
     for item in itemList:
         levels = item.separate_price_levels()
         if max(k for k, _ in levels.items()) > numberOfPriceLevels:
@@ -200,11 +206,11 @@ def generateFullExcel(save_file, items=None,
 
         row = sheet.row(i)
         # row.write(2, int(item.id))
-        row.write(ig_field_sequence['id'], int(item.id))
-        row.write(ig_field_sequence['name'], str(item.name))
-        row.write(ig_field_sequence['abbr1'], str(item.abbr1))
-        row.write(ig_field_sequence['abbr2'], str(item.abbr2))
-        row.write(ig_field_sequence['print_label'], str(item.printerLabel))
+        row.write(IG_FIELD_SEQUENCE['id'], int(item.id))
+        row.write(IG_FIELD_SEQUENCE['name'], str(item.name))
+        row.write(IG_FIELD_SEQUENCE['abbr1'], str(item.abbr1))
+        row.write(IG_FIELD_SEQUENCE['abbr2'], str(item.abbr2))
+        row.write(IG_FIELD_SEQUENCE['print_label'], str(item.printerLabel))
 
         if expandPriceLevels:
             for p in range(1, (numberOfPriceLevels + 1)):
@@ -213,83 +219,83 @@ def generateFullExcel(save_file, items=None,
                 else:
                     price = ''
                 r = p - 1
-                row.write(ig_field_sequence['price_levels'] + r, str(price))
+                row.write(IG_FIELD_SEQUENCE['price_levels'] + r, str(price))
 
-            row.write(ig_field_sequence['product_class'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['product_class'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.classID))
-            row.write(ig_field_sequence['revenue_category'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['revenue_category'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.revCat))
-            row.write(ig_field_sequence['tax_group'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['tax_group'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.taxGrp))
-            row.write(ig_field_sequence['security_level'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['security_level'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.securityLvl))
-            row.write(ig_field_sequence['report_category'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['report_category'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.reportCat))
-            row.write(ig_field_sequence['sell_by_weight'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['sell_by_weight'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.byWeight))
-            row.write(ig_field_sequence['tare'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['tare'] + (numberOfPriceLevels - 1),
                       str(item.tare))
-            row.write(ig_field_sequence['sku'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['sku'] + (numberOfPriceLevels - 1),
                       str(item.sku))
-            row.write(ig_field_sequence['gun_code'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['gun_code'] + (numberOfPriceLevels - 1),
                       str(item.gunCode))
-            row.write(ig_field_sequence['cost'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['cost'] + (numberOfPriceLevels - 1),
                       str(item.cost))
-            row.write(ig_field_sequence['cost'] + numberOfPriceLevels, 'N/A')
-            row.write(ig_field_sequence['prompt_for_price'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['cost'] + numberOfPriceLevels, 'N/A')
+            row.write(IG_FIELD_SEQUENCE['prompt_for_price'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.pricePrompt))
-            row.write(ig_field_sequence['print_on_check'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['print_on_check'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.prntOnChk))
-            row.write(ig_field_sequence['is_discountable'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['is_discountable'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.disc))
-            row.write(ig_field_sequence['voidable'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['voidable'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.voidable))
-            row.write(ig_field_sequence['inactive'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['inactive'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.inactive))
-            row.write(ig_field_sequence['tax_included'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['tax_included'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.taxIncluded))
-            row.write(ig_field_sequence['item_group'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['item_group'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.itemGrp))
-            row.write(ig_field_sequence['receipt_text'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['receipt_text'] + (numberOfPriceLevels - 1),
                       str(item.receipt))
-            row.write(ig_field_sequence['allow_price_override'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['allow_price_override'] + (numberOfPriceLevels - 1),
                       safeIntCast(item.priceOver))
-            row.write(ig_field_sequence['allow_price_override'] + numberOfPriceLevels, 'N/A')
-            row.write(ig_field_sequence['choice_groups'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['allow_price_override'] + numberOfPriceLevels, 'N/A')
+            row.write(IG_FIELD_SEQUENCE['choice_groups'] + (numberOfPriceLevels - 1),
                       str(item.choiceGrps))
-            row.write(ig_field_sequence['kitchen_printers'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['kitchen_printers'] + (numberOfPriceLevels - 1),
                       str(item.ktchnPrint))
-            row.write(ig_field_sequence['covers'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['covers'] + (numberOfPriceLevels - 1),
                       str(item.covers))
-            row.write(ig_field_sequence['store_id'] + (numberOfPriceLevels - 1),
+            row.write(IG_FIELD_SEQUENCE['store_id'] + (numberOfPriceLevels - 1),
                       str(item.storeID))
         else:
-            row.write(ig_field_sequence['price_levels'], str(item.priceLvls))
-            row.write(ig_field_sequence['product_class'], safeIntCast(item.classID))
-            row.write(ig_field_sequence['revenue_category'], safeIntCast(item.revCat))
-            row.write(ig_field_sequence['tax_group'], safeIntCast(item.taxGrp))
-            row.write(ig_field_sequence['security_level'], safeIntCast(item.securityLvl))
-            row.write(ig_field_sequence['report_category'], safeIntCast(item.reportCat))
-            row.write(ig_field_sequence['sell_by_weight'], safeIntCast(item.byWeight))
-            row.write(ig_field_sequence['tare'], str(item.tare))
-            row.write(ig_field_sequence['sku'], str(item.sku))
-            row.write(ig_field_sequence['gun_code'], str(item.gunCode))
-            row.write(ig_field_sequence['cost'], str(item.cost))
-            row.write(ig_field_sequence['cost'] + 1, 'N/A')
-            row.write(ig_field_sequence['prompt_for_price'], safeIntCast(item.pricePrompt))
-            row.write(ig_field_sequence['print_on_check'], safeIntCast(item.prntOnChk))
-            row.write(ig_field_sequence['is_discountable'], safeIntCast(item.disc))
-            row.write(ig_field_sequence['voidable'], safeIntCast(item.voidable))
-            row.write(ig_field_sequence['inactive'], safeIntCast(item.inactive))
-            row.write(ig_field_sequence['tax_included'], safeIntCast(item.taxIncluded))
-            row.write(ig_field_sequence['item_group'], safeIntCast(item.itemGrp))
-            row.write(ig_field_sequence['receipt_text'], str(item.receipt))
-            row.write(ig_field_sequence['allow_price_override'], safeIntCast(item.priceOver))
-            row.write(ig_field_sequence['allow_price_override'] + 1, 'N/A')
-            row.write(ig_field_sequence['choice_groups'], str(item.choiceGrps))
-            row.write(ig_field_sequence['kitchen_printers'], str(item.ktchnPrint))
-            row.write(ig_field_sequence['covers'], str(item.covers))
-            row.write(ig_field_sequence['store_id'], str(item.storeID))
+            row.write(IG_FIELD_SEQUENCE['price_levels'], str(item.priceLvls))
+            row.write(IG_FIELD_SEQUENCE['product_class'], safeIntCast(item.classID))
+            row.write(IG_FIELD_SEQUENCE['revenue_category'], safeIntCast(item.revCat))
+            row.write(IG_FIELD_SEQUENCE['tax_group'], safeIntCast(item.taxGrp))
+            row.write(IG_FIELD_SEQUENCE['security_level'], safeIntCast(item.securityLvl))
+            row.write(IG_FIELD_SEQUENCE['report_category'], safeIntCast(item.reportCat))
+            row.write(IG_FIELD_SEQUENCE['sell_by_weight'], safeIntCast(item.byWeight))
+            row.write(IG_FIELD_SEQUENCE['tare'], str(item.tare))
+            row.write(IG_FIELD_SEQUENCE['sku'], str(item.sku))
+            row.write(IG_FIELD_SEQUENCE['gun_code'], str(item.gunCode))
+            row.write(IG_FIELD_SEQUENCE['cost'], str(item.cost))
+            row.write(IG_FIELD_SEQUENCE['cost'] + 1, 'N/A')
+            row.write(IG_FIELD_SEQUENCE['prompt_for_price'], safeIntCast(item.pricePrompt))
+            row.write(IG_FIELD_SEQUENCE['print_on_check'], safeIntCast(item.prntOnChk))
+            row.write(IG_FIELD_SEQUENCE['is_discountable'], safeIntCast(item.disc))
+            row.write(IG_FIELD_SEQUENCE['voidable'], safeIntCast(item.voidable))
+            row.write(IG_FIELD_SEQUENCE['inactive'], safeIntCast(item.inactive))
+            row.write(IG_FIELD_SEQUENCE['tax_included'], safeIntCast(item.taxIncluded))
+            row.write(IG_FIELD_SEQUENCE['item_group'], safeIntCast(item.itemGrp))
+            row.write(IG_FIELD_SEQUENCE['receipt_text'], str(item.receipt))
+            row.write(IG_FIELD_SEQUENCE['allow_price_override'], safeIntCast(item.priceOver))
+            row.write(IG_FIELD_SEQUENCE['allow_price_override'] + 1, 'N/A')
+            row.write(IG_FIELD_SEQUENCE['choice_groups'], str(item.choiceGrps))
+            row.write(IG_FIELD_SEQUENCE['kitchen_printers'], str(item.ktchnPrint))
+            row.write(IG_FIELD_SEQUENCE['covers'], str(item.covers))
+            row.write(IG_FIELD_SEQUENCE['store_id'], str(item.storeID))
 
         if row_is_misaligned:
             oopsStyle = (easyxf('pattern: pattern solid, fore_color rose'))
@@ -304,9 +310,10 @@ def generateFullExcel(save_file, items=None,
 
 
 # noinspection PyShadowingNames,PyShadowingNames
-def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
+def generate_custom_excel_spreadsheet(save_file, items=None, excludeUnpriced=True):
     items = items or itemList
     print('preparing to convert to custom Excel')
+    #pdb.set_trace()
     book = Workbook()
     heading = easyxf(
         'font: bold True;'
@@ -317,39 +324,40 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
     sheet.panes_frozen = True
     sheet.remove_splits = True
     sheet.horz_split_pos = 1
-    row1 = sheet.row(0)
-    row2 = sheet.row(1)
+    heading_row = sheet.row(0)
+    keyname_row = sheet.row(1)
     headers = ['"A"', 'ID']
-    colKeys = ['modType', 'id']
+    keynames = ['modType', 'id']
     pricePos = 100
 
     for k, v in sorted(checkbox_variable_map.items(),
-                       key=lambda x: ig_field_sequence.get(x[0])):
+                       key=lambda x: IG_FIELD_SEQUENCE.get(x[0])):
         if str(v.get()) == '1':
-            headers.append(pretty_print_text_map[k])
-            colKeys.append(k)
+            headers.append(TEXT_HEADERS[k])
+            keynames.append(k)
 
     if 'Prices' in headers:
         pricePos = headers.index('Prices')
         del headers[pricePos]
-        del colKeys[pricePos]
-        numberOfPriceLevels = enumeratePriceLevels()
-        priceHeaders = []
+        del keynames[pricePos]
+        num_price_levels = enumeratePriceLevels()
+        price_headers = []
 
-        for x in range(numberOfPriceLevels):
-            priceHeaders.append('Price Level ' + str(x + 1))
+        for key in range(num_price_levels):
+            price_headers.append('Price Level ' + str(key + 1))
 
-        priceHeaders.reverse()
-        for i, x in zip(reversed(range(1, len(priceHeaders) + 1)),
-                        priceHeaders):
-            headers.insert(pricePos, x)
-            colKeys.insert(pricePos, ('priceLvl' + str(i)))
+        price_headers.reverse()
+        for level, price in zip(reversed(range(1, len(price_headers) + 1)),
+                                price_headers):
+            headers.insert(pricePos, price)
+            keynames.insert(pricePos, ('priceLvl' + str(level)))
 
     # Write Headers
-    for h, x, i in zip(headers, colKeys, range(len(headers))):
-        row1.write(i, h, heading)
-        row2.write(i, x, heading)
+    for header, key, row in zip(headers, keynames, range(len(headers))):
+        heading_row.write(row, header, heading)
+        keyname_row.write(row, key, heading)
 
+    # Hiding keyname row
     sheet.row(1).hidden = True
 
     # Write Rows
@@ -360,9 +368,9 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
         row = sheet.row(r)
 
         # Write item values to columns
-        for col, key in enumerate(colKeys):
+        for col, key in enumerate(keynames):
             if 'priceLvl' in key:
-                # Strip number from priceLvl key and pass to index of separatePriceLevels
+                # Extract number from priceLvl key
                 p = int(key[key.find('l') + 1:])
                 if p in item.separate_price_levels():
                     price = item.separate_price_levels()[p]
@@ -371,7 +379,7 @@ def generateCustomExcel(save_file, items=None, excludeUnpriced=True):
 
                 row.write(col, str(price))
             else:
-                if key in integer_fields:
+                if key in INTEGER_FIELDS:
                     row.write(col, safeIntCast(item.__dict__[key]))
                 elif key == 'modType':
                     continue
@@ -395,7 +403,6 @@ def generateIGUpdate(excel_file, ig_text_file):
 
     sheet = book.sheet_by_index(0)
     includeColumns = set()
-    quotedFields = (3, 4, 5, 26)
 
     for col in range(3, sheet.ncols):
         if sheet.cell_value(1, col):
@@ -423,7 +430,7 @@ def generateIGUpdate(excel_file, ig_text_file):
             emptySpaces = col - previousIndex - 1
             for _ in range(emptySpaces):
                 itemProperties.append('')
-            if col in quotedFields:
+            if col in STRING_FIELDS:
                 itemProperties.append(
                     '"' + str(sheet.cell_value(row, col)) + '"')
             else:
@@ -446,12 +453,15 @@ def generate_ig_import(book, ig_text_file):
     book -- Excel workbook (custom)
     ig_text_file -- text file to be generated for Agilysys
     """
+    print('Generating IG Import from custom Excel')
     sheet = book.sheet_by_index(0)
-    quotedFields = (3, 4, 5, 26)
     updated_items = 0
 
     for row in range(2, sheet.nrows):
+        print('extracting row {0}'.format(row))
         item_properties = []
+        item_property_map = dict()
+        price_level_map = dict()
         update_type = sheet.cell_value(row, 0)
         if update_type != 'A' and update_type != 'U' and \
                         update_type != 'D' and update_type != 'X':
@@ -467,22 +477,30 @@ def generate_ig_import(book, ig_text_file):
             updated_items += 1
 
         for col in range(1, sheet.ncols):
+            print('extracting column {0} in row {1}'.format(col, row))
             key = sheet.cell_value(1, col)
             if 'priceLvl' in key:
-                priceLevelMap = {key: sheet.cell_value(row, col)}
-            itemPropertyMap= {key: (sheet.cell_value(row, col))}
+                price_level_map[key] = sheet.cell_value(row, col)
+            item_property_map[key] = sheet.cell_value(row, col)
 
-        if priceLevelMap:
-            itemPropertyMap['price_levels'] = build_ig_price_array(priceLevelMap)
+        if price_level_map:
+            print('price level map exists')
+            item_property_map['price_levels'] = build_ig_price_array(price_level_map)
 
-        for key, position in sorted(ig_field_sequence.items(),
+        for key, field in sorted(IG_FIELD_SEQUENCE.items(),
                                     key=lambda x: x[1]):
-            if key in itemPropertyMap.keys():
-                if position in quotedFields:
-                    item_properties.append('"{0}"'.format(itemPropertyMap[key]))
+            print('looking over IG fields')
+            if key in item_property_map.keys():
+                print('found {0} in item properties'.format(key))
+                if field in STRING_FIELDS:
+                    print('{0} is a string field'.format(key))
+                    item_properties.append('"{0}"'.format(
+                        item_property_map[key]))
                 else:
-                    item_properties.append(safeIntCast(itemPropertyMap[key]))
+                    print('{0} is NOT a string'.format(key))
+                    item_properties.append(safeIntCast(item_property_map[key]))
             else:
+                print('{0} not in item properties'.format(key))
                 item_properties.append('')
 
         line = ','.join(item_properties).replace(';', ',')
@@ -520,7 +538,7 @@ def get_file_type(filename):
 
 def convert_to_ig_format():
     """Initiates conversion from Excel spreadsheet to IG text file"""
-    text_file = in_file
+    print('starting conversion to IG Format')
     options = {
         'title': 'Save As',
         'initialfile': os.path.join(os.path.dirname(in_file), 'MI_IMP.txt')
@@ -528,17 +546,16 @@ def convert_to_ig_format():
     save_file = saveFile(options)
     if save_file:
         with codecs.open(save_file, 'w+', 'latin-1') as text_file:
-            file_extension = file.rsplit('.', maxsplit=1)[1]
-
-        if file_extension == 'xls' or file_extension == 'xlsx':
-            book = open_workbook(file)
-            sheet = book.sheet_by_index(0)
-            if book.nsheets > 1:
-                generate_standardized_ig_imports(book, text_file)
-            elif sheet.cell_value(1, 0) == 'modType':
-                generate_ig_import(book, text_file)
-            else:
-                generateIGUpdate(book, text_file)
+            file_extension = in_file.rsplit('.', maxsplit=1)[1]
+            if file_extension == 'xls' or file_extension == 'xlsx':
+                book = open_workbook(in_file)
+                sheet = book.sheet_by_index(0)
+                if book.nsheets > 1:
+                    generate_standardized_ig_imports(book, text_file)
+                elif sheet.cell_value(1, 0) == 'modType':
+                    generate_ig_import(book, text_file)
+                else:
+                    generateIGUpdate(book, text_file)
 
 
 def convert_to_excel(type='custom'):
@@ -576,19 +593,19 @@ def convert_to_excel(type='custom'):
         generateFullExcel(save_file, excludeUnpriced=noUnpriced.get(),
                           expandPriceLevels=expandPriceLevels.get())
     elif save_file and type == 'custom':
-        generateCustomExcel(save_file, excludeUnpriced=noUnpriced.get())
+        generate_custom_excel_spreadsheet(save_file, excludeUnpriced=noUnpriced.get())
 
 
 def build_ig_price_array(price_map):
     """Returns IG price array from dictionary of price levels."""
-
     prices = []
+    price_is_negative = False
     for price_level, price in sorted(price_map.items()):
         if price != '':
             # Extract number from priceLvl
             level = str(price_level[price_level.find('l') + 1:])
             price_sequence = ''
-            if '(' in str(price) or '(' in str(price):
+            if '(' in str(price) or ')' in str(price):
                 price_is_negative = True
             price = '{0:.2f}'.format(float(str(price).strip('$(){}')))
             if price_is_negative:
@@ -644,39 +661,49 @@ def display_item_property_selections():
     colSelectFrame.rowconfigure(1, weight=1)
 
     global checkbox_variable_map
-    row_count = 0
+    row = 5
     counter = 0
 
-    for k, v in sorted(ig_field_sequence.items(), key=lambda x: x[1]):
+    for k, v in sorted(IG_FIELD_SEQUENCE.items(), key=lambda x: x[1]):
         col = 0
         if k not in checkbox_variable_map:
             checkbox_variable_map[k] = IntVar()
         if k != 'id' and k[:-3] != 'reserved':
             if counter % 2 == 0:
                 col = 0
-                row_count += 1
+                row += 1
             else:
                 col = 3
-            l = ttk.Checkbutton(colSelectFrame, text=pretty_print_text_map[k],
+            l = ttk.Checkbutton(colSelectFrame, text=TEXT_HEADERS[k],
                                 variable=checkbox_variable_map[k]).grid(
-                                    column=col, row=row_count, sticky=(N, W))
+                                    column=col, row=row, sticky=(N, W))
             counter += 1
 
     ttk.Button(colSelectFrame, text='OK',
                command=csWin.destroy).grid(column=1, row=100)
     ttk.Button(colSelectFrame, text='Select All',
-               command=select_all_properties)
+               command=select_all_properties).grid(column=1, row=0)
     return
 
 
 def select_all_properties():
     """Selects all properties in checkVarMap"""
     global checkbox_variable_map
+    global all_boxes_selected
 
-    for k,v in MenuItem.ig_field_sequence.items():
+    if all_boxes_selected:
+        check_mark = 0
+        all_boxes_selected = False
+    else:
+        check_mark = 1
+        all_boxes_selected = True
+
+    for k,v in MenuItem.IG_FIELD_SEQUENCE.items():
         if k not in checkbox_variable_map:
             checkbox_variable_map[k] = IntVar()
-        checkbox_variable_map[k].set(1)
+        #id is mandatory and shouldn't be included in variable map
+        if k != 'id':
+                checkbox_variable_map[k].set(check_mark)
 
 
 def show_var_states(ttk_var):
@@ -712,13 +739,14 @@ openFileString = StringVar()
 noUnpriced = BooleanVar()
 expandPriceLevels = BooleanVar()
 colPrice = BooleanVar()
-checkbox_variable_map = {}
 
-if not os.path.exists(app_directory):
-    os.mkdir(app_directory)
 
-FSOCK = open(log_file, 'a+')
-sys.stderr = FSOCK
+if not os.path.exists(APP_DIR):
+    os.mkdir(APP_DIR)
+
+if hasattr(sys, '_MEIPASS'):
+    FSOCK = open(LOG_FILE, 'a+')
+    sys.stderr = FSOCK
 
 menubar = Menu(root)
 menu_file = Menu(menubar)

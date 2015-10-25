@@ -46,6 +46,7 @@ def ez_print(string):
 
 
 def open_file(options=None):
+    """Generates File Open dialog and alters UI based on file selected."""
     hide_all_buttons()
     init_dir = ''
     global checkbox_variable_map, all_boxes_selected
@@ -91,12 +92,13 @@ def open_file(options=None):
         return
 
 
-def saveFile(options):
+def save_file_as(options):
+    """Generates Save As dialog and returns chosen file path."""
     file_opt = options
-    save_file = filedialog.asksaveasfilename(**file_opt)
-    if save_file is None or save_file == "":
+    file_save_path = filedialog.asksaveasfilename(**file_opt)
+    if file_save_path is None or file_save_path == "":
         print("No file selected")
-    return save_file
+    return file_save_path
 
 
 def replace_commas(match, ):
@@ -106,6 +108,7 @@ def replace_commas(match, ):
 
 
 def pre_parse_ig_file(file_name):
+    """Parses lines from IG export into workable objects."""
     with codecs.open(file_name, 'r', 'latin-1') as export:
         print('pre-parse initiated')
         for line in export:
@@ -153,7 +156,7 @@ def enumeratePriceLevels():
 
 
 # noinspection PyShadowingNames
-def generateFullExcel(save_file, items=None,
+def generateFullExcel(excel_file, items=None,
                       excludeUnpriced=True, expandPriceLevels=False):
     """Legacy function to convert IG Export to complete Excel spreadsheet."""
     items = items or itemList
@@ -302,7 +305,7 @@ def generateFullExcel(save_file, items=None,
             row.write(1, 'X', oopsStyle)
 
     try:
-        book.save(save_file)
+        book.save(excel_file)
         messagebox.showinfo(title='Success',
                             message='Excel export created successfully.')
     except PermissionError:
@@ -310,10 +313,18 @@ def generateFullExcel(save_file, items=None,
 
 
 # noinspection PyShadowingNames,PyShadowingNames
-def generate_custom_excel_spreadsheet(save_file, items=None, excludeUnpriced=True):
+def generate_custom_excel_spreadsheet(
+        excel_file, items=None, excludeUnpriced=True
+):
+    """Generates Excel spreadsheet from IG Export file
+
+    Keyword arguements:
+    excel_file -- file path to save resulting workbook
+    items -- list of items to parse
+    excludeUnpriced -- ignore items lacking a price when generating export
+    """
     items = items or itemList
     print('preparing to convert to custom Excel')
-    #pdb.set_trace()
     book = Workbook()
     heading = easyxf(
         'font: bold True;'
@@ -390,7 +401,7 @@ def generate_custom_excel_spreadsheet(save_file, items=None, excludeUnpriced=Tru
             row.write(0, 'X', oopsStyle)
 
     try:
-        book.save(save_file)
+        book.save(excel_file)
         messagebox.showinfo(title='Success',
                             message='Custom Excel export created successfully')
     except PermissionError:
@@ -543,9 +554,9 @@ def convert_to_ig_format():
         'title': 'Save As',
         'initialfile': os.path.join(os.path.dirname(in_file), 'MI_IMP.txt')
         }
-    save_file = saveFile(options)
-    if save_file:
-        with codecs.open(save_file, 'w+', 'latin-1') as text_file:
+    file_save_path = save_file_as(options)
+    if file_save_path:
+        with codecs.open(file_save_path, 'w+', 'latin-1') as text_file:
             file_extension = in_file.rsplit('.', maxsplit=1)[1]
             if file_extension == 'xls' or file_extension == 'xlsx':
                 book = open_workbook(in_file)
@@ -587,13 +598,13 @@ def convert_to_excel(type='custom'):
                'initialfile': os.path.join(os.path.dirname(in_file),
                                            default_filename),
                'filetypes': file_type_filters}
-    save_file = saveFile(options)
+    file_save_path = save_file_as(options)
 
-    if save_file and type == 'complete':
-        generateFullExcel(save_file, excludeUnpriced=noUnpriced.get(),
+    if file_save_path and type == 'complete':
+        generateFullExcel(file_save_path, excludeUnpriced=noUnpriced.get(),
                           expandPriceLevels=expandPriceLevels.get())
-    elif save_file and type == 'custom':
-        generate_custom_excel_spreadsheet(save_file, excludeUnpriced=noUnpriced.get())
+    elif file_save_path and type == 'custom':
+        generate_custom_excel_spreadsheet(file_save_path, excludeUnpriced=noUnpriced.get())
 
 
 def build_ig_price_array(price_map):

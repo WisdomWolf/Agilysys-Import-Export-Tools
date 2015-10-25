@@ -22,7 +22,7 @@ IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
 INTEGER_FIELDS = MenuItem.INTEGER_FIELDS
 STRING_FIELDS = MenuItem.STRING_FIELDS
 
-__version__ = 'v0.10.7'
+__version__ = 'v0.10.24'
 
 PRICE_ARRAY_REGEX = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 QUOTED_COMMAS_REGEX = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
@@ -39,10 +39,6 @@ IG_EXPORT = 1
 EXCEL_FILE = 3
 itemList = []
 itemMap = {}
-
-
-def ez_print(string):
-    print(str(string))
 
 
 def open_file(options=None):
@@ -634,7 +630,6 @@ def safeIntCast(value):
     Attempts to cast value to an integer, falls back to a string if it fails.
     Will also set row_is_misaligned to True if int cast fails.
     """
-
     try:
         return str(int(value))
     except ValueError:

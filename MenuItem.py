@@ -6,7 +6,7 @@ quoteMatch = re.compile(r'(^"+|"+$)')
 
 class MenuItem:
     """An object to simplify item property assignment"""
-    
+
     ig_field_sequence = {
         'id': 2, 'name': 3, 'abbr1': 4, 'abbr2': 5,
         'print_label': 6, 'price_levels': 7, 'product_class': 8,

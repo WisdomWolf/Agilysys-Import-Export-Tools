@@ -734,7 +734,6 @@ def convert_to_excel(type='custom'):
     except UnicodeDecodeError:
         with codecs.open(in_file, 'r', 'latin-1') as export:
             pre_parse_ig_file(export)
-
     file_parts = str(os.path.basename(in_file)).rsplit('.', maxsplit=1)
 
     if type == 'complete':

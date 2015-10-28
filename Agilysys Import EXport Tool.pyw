@@ -17,16 +17,16 @@ from xlrd import open_workbook
 
 from MenuItem import MenuItem
 
+__version__ = 'v0.10.28'
+
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
 INTEGER_FIELDS = MenuItem.INTEGER_FIELDS
 STRING_FIELDS = MenuItem.STRING_FIELDS
-
-__version__ = 'v0.10.28'
-
 PRICE_ARRAY_REGEX = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 QUOTED_COMMAS_REGEX = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
 PRICE_COLUMN = 8
+MAX_STRING_LENGTH = 38
 file_type_filters = [('Supported Files', '.xls .xlsx .txt'),
                      ('Text Files', '.txt'),
                      ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
@@ -66,6 +66,7 @@ def open_file(options=None):
     file_opt = options
     global in_file
     in_file = filedialog.askopenfilename(**file_opt)
+    file_display_string.set(directory_display(in_file))
     options = None
     if not in_file or in_file == "":
         print("No file selected")
@@ -87,6 +88,25 @@ def open_file(options=None):
                             message='This file is not supported.')
         print('{0}\n{1}'.format(sys.exc_info()[0], sys.exc_info()[1]))
         return
+
+
+def directory_display(directory):
+    """Returns truncated directory string when over length over 38 chars."""
+    if len(directory) > MAX_STRING_LENGTH:
+        split_dirs = directory.split('/')
+        directory = '/'.join([split_dirs[0], '...',
+                              split_dirs[-2], split_dirs[-1]])
+        if len(directory) > MAX_STRING_LENGTH:
+            return split_dirs[-1]
+    return directory
+
+
+# Not working in current incarnation, requires modification
+def write_to_text_file(file, *args):
+    output_list = []
+    with open(file, 'w+') as f:
+        for arg in args:
+            f.write('\n'.join(arg))
 
 
 def save_file_as(options):
@@ -431,7 +451,7 @@ def generateIGUpdate(excel_file, ig_text_file):
     for row in range(2, sheet.nrows):
         itemProperties = []
         updateType = sheet.cell_value(row, 1)
-        if updateType != 'A' and updateType != 'U' and\
+        if updateType != 'A' and updateType != 'U' and \
                         updateType != 'D' and updateType != 'X':
             continue
         elif updateType == 'X':
@@ -504,7 +524,7 @@ def generate_ig_import(book, ig_text_file):
                 build_ig_price_array(price_level_map)
 
         for key, field in sorted(IG_FIELD_SEQUENCE.items(),
-                                    key=lambda x: x[1]):
+                                 key=lambda x: x[1]):
             if key in item_property_map.keys():
                 if field in STRING_FIELDS:
                     item_properties.append('"{0}"'.format(
@@ -532,8 +552,8 @@ def generate_ig_import(book, ig_text_file):
                     " in the first column?")
 
 
-#TODO Correct/Replace save path selection
-#TODO Get better records for revenue categories
+# TODO Correct/Replace save path selection
+# TODO Get better records for revenue categories
 def generate_standardized_ig_imports(book, save_path):
     """Generates IG import files from POS Configuration Worksheet.
 
@@ -547,10 +567,14 @@ def generate_standardized_ig_imports(book, save_path):
     product_sheet = book.sheet_by_name('Product Classes')
     revenue_sheet = book.sheet_by_name('Revenue Categories')
     category_sheet = book.sheet_by_name('Categories')
-    product_classes = get_product_categories(category_sheet)
+    product_classes = get_product_classes(product_sheet)
     revenue_categories = get_revenue_categories(revenue_sheet)
-    ig_priced_file = os.path.join(save_path, 'MI_IMP_priced.txt')
-    ig_unpriced_file = os.path.join(save_path, 'MI_IMP_unpriced.txt')
+    ig_priced_file = '{0} - MI_Imp_priced.txt'.format(save_path)
+    ig_unpriced_file = '{0} - MI_Imp_unpriced.txt'.format(save_path)
+    product_class_error_file = os.path.join(
+        os.path.dirname(save_path), 'missing_product_classes.txt')
+    revenue_category_error_file = os.path.join(
+        os.path.dirname(save_path), 'missing_revenue_categories.txt')
 
     max_item_id = int(ig_sheet.cell_value(ig_sheet.nrows - 1, 1))
     last_item_id = 1
@@ -558,11 +582,13 @@ def generate_standardized_ig_imports(book, save_path):
 
     revenue_category_errors = []
     product_class_errors = []
+    priced_items = []
+    unpriced_items = []
 
     for row in range(5, sheet.nrows):
         fields = []
         price_map = dict()
-        update_type = 'A'
+        update_type = '"A"'
         prices = '{1,$0.00}'
 
         for col in range(1, 8):
@@ -576,7 +602,7 @@ def generate_standardized_ig_imports(book, save_path):
                 price = sheet.cell_value(row, price_level)
             price_map[level] = price
 
-        #pdb.set_trace()
+        # pdb.set_trace()
         if price_map:
             prices = build_ig_price_array(price_map)
 
@@ -612,17 +638,34 @@ def generate_standardized_ig_imports(book, save_path):
                         revenue_category=revenue_category,
                         product_class=product_class, sku=sku,
                         priceLvls=prices)
-        line = '"{0}",{1}\n'.format(update_type, item)
+        line = '{0},{1}'.format(update_type, item)
         if price_map:
-            with open(ig_priced_file, 'a+') as output:
-                output.write(line)
+            priced_items.append(line)
         else:
-            with open(ig_unpriced_file, 'a+') as output:
-                output.write(line)
+            unpriced_items.append(line)
+
+    # Seems like an inelegant solution, consider revising
+    print('iteration complete, writing files')
+    write_to_text_file(ig_priced_file, priced_items)
+    write_to_text_file(ig_unpriced_file, unpriced_items)
+    write_to_text_file(product_class_error_file, product_class_errors)
+    write_to_text_file(revenue_category_error_file, revenue_category_errors)
+    # with open(ig_priced_file, 'w+') as pf, \
+    #         open(ig_unpriced_file, 'w+') as upf, \
+    #         open(product_class_error_file, 'w+') as pef, \
+    #         open(revenue_category_error_file, 'w+') as ref:
+    #     for item in priced_items:
+    #         pf.write('"{0}",{1}\n'.format(update_type, item))
+    #     for item in unpriced_items:
+    #         upf.write('"{0}",{1}\n'.format(update_type, item))
+    #     for error in product_class_errors:
+    #         pef.write('{0}\n'.format(error))
+    #     for error in revenue_category_errors:
+    #         ref.write('{0}\n'.format(error))
 
     print('IG import file creations complete.')
     messagebox.showinfo(title='Success',
-                            message='IG import files created successfully.')
+                        message='IG import files created successfully.')
 
 
 def get_revenue_categories(sheet):
@@ -657,7 +700,7 @@ def get_product_classes(sheet):
     """Returns product classes dict from internal spreadsheet"""
     product_classes = dict()
     for row in range(1, sheet.nrows):
-        pc = translate_product_class(sheet.cell_value(row, 1))
+        pc = sheet.cell_value(row, 1)
         pid = sheet.cell_value(row, 0)
         try:
             product_classes[pc] = pid
@@ -704,13 +747,13 @@ def convert_to_ig_format():
     options = {
         'title': 'Save As',
         'initialfile': os.path.join(os.path.dirname(in_file), 'MI_IMP.txt')
-        }
+    }
     file_extension = in_file.rsplit('.', maxsplit=1)[1]
     if file_extension == 'xls' or file_extension == 'xlsx':
         book = open_workbook(in_file)
         sheet = book.sheet_by_index(0)
         if book.nsheets > 1:
-            generate_standardized_ig_imports(book, os.path.dirname(in_file))
+            generate_standardized_ig_imports(book, in_file)
         else:
             file_save_path = save_file_as(options)
             if file_save_path:
@@ -840,7 +883,7 @@ def display_item_property_selections():
                 col = 3
             l = ttk.Checkbutton(colSelectFrame, text=TEXT_HEADERS[k],
                                 variable=checkbox_variable_map[k]).grid(
-                                    column=col, row=row, sticky=(N, W))
+                column=col, row=row, sticky=(N, W))
             counter += 1
 
     ttk.Button(colSelectFrame, text='OK',
@@ -862,18 +905,18 @@ def select_all_properties():
         check_mark = 1
         all_boxes_selected = True
 
-    for k,v in MenuItem.IG_FIELD_SEQUENCE.items():
+    for k, v in MenuItem.IG_FIELD_SEQUENCE.items():
         if k not in checkbox_variable_map:
             checkbox_variable_map[k] = IntVar()
-        #id is mandatory and shouldn't be included in variable map
+        # id is mandatory and shouldn't be included in variable map
         if k != 'id':
-                checkbox_variable_map[k].set(check_mark)
+            checkbox_variable_map[k].set(check_mark)
 
 
 def show_var_states(ttk_var):
-    """prints state of ttk variables."""
+    """prints state of ttk variables. For debugging purposes."""
     if type(ttk_var) is dict:
-        for k,v in ttk_var.items():
+        for k, v in ttk_var.items():
             print('{0}: {1}'.format(k, v.get()))
     elif type(ttk_var) is list:
         for item in ttk_var:
@@ -886,8 +929,8 @@ def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
-
-    return os.path.join(os.path.abspath("."), relative_path)
+    else:
+        return os.path.join(os.path.abspath("."), relative_path)
 
 
 root = Tk()
@@ -899,11 +942,10 @@ try:
 except TclError:
     print('Unable to locate icon at {0}'.format(ICON))
 
-openFileString = StringVar()
+file_display_string = StringVar()
 noUnpriced = BooleanVar()
 expandPriceLevels = BooleanVar()
 colPrice = BooleanVar()
-
 
 if not os.path.exists(APP_DIR):
     os.mkdir(APP_DIR)
@@ -927,7 +969,6 @@ menu_options.add_checkbutton(label='Remove Unpriced Items',
                              variable=noUnpriced, onvalue=1, offvalue=0)
 menu_options.add_checkbutton(label='Separate Price Level',
                              variable=expandPriceLevels, onvalue=1, offvalue=0)
-menu_options.add_command(label='Select All', command=select_all_properties)
 menu_options.add_command(label='Display Vars',
                          command=lambda: show_var_states(checkbox_variable_map))
 
@@ -940,19 +981,17 @@ mainframe.rowconfigure(1, weight=1)
 
 ttk.Label(mainframe, text="Input File:").grid(
     column=1, row=1, sticky=(N, W, E))
-openFile_entry = ttk.Entry(mainframe, width=40, textvariable=openFileString)
+openFile_entry = ttk.Entry(mainframe, width=40, textvariable=file_display_string)
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
 button_ig = ttk.Button(mainframe, text='Generate IG Update',
                        command=convert_to_ig_format)
 button_ig.grid(column=1, row=3)
-
 button_excel_complete = ttk.Button(mainframe, text='Create Full xls',
-                           command=lambda: convert_to_excel('complete'))
+                                   command=lambda: convert_to_excel('complete'))
 button_excel_complete.grid(column=1, row=6)
-
 button_excel_custom = ttk.Button(mainframe, text='Create Custom xls',
-                             command=lambda: convert_to_excel('custom'))
+                                 command=lambda: convert_to_excel('custom'))
 button_excel_custom.grid(column=1, row=7)
 
 simplifyButtons = [button_excel_complete, button_excel_custom]

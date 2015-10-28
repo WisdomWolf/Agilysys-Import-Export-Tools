@@ -6,131 +6,149 @@ quoteMatch = re.compile(r'(^"+|"+$)')
 
 class MenuItem:
     """An object to simplify item property assignment"""
-    
-    attributeMap = {'id': 2, 'name': 3, 'abbr1': 4, 'abbr2': 5,
-                     'printerLabel': 6, 'priceLvls': 7, 'classID': 8,
-                     'revCat': 9, 'taxGrp': 10, 'securityLvl': 11,
-                     'reportCat': 12, 'byWeight': 13,
-                     'tare': 14, 'sku': 15, 'gunCode': 16,
-                     'cost': 17, 'reserved_18': 18, 'pricePrompt': 19,
-                     'prntOnChk': 20, 'disc': 21, 'voidable': 22,
-                     'inactive': 23, 'taxIncluded': 24,
-                     'itemGrp': 25, 'receipt': 26,
-                     'priceOver': 27, 'reserved_28': 28, 'choiceGrps': 29,
-                     'ktchnPrint': 30, 'covers': 31, 'storeID': 32}
-    
-    textMap = {'id':'ID', 'name':'Name', 'abbr1':'Abbr1', 'abbr2':'Abbr2',
-                'printerLabel':'Printer Label', 'priceLvls':'Prices',
-                'revCat':'Revenue Category', 'taxGrp':'Tax Group',
-                'securityLvl':'Security Level', 'reportCat':'Report Category',
-                'byWeight':'By Weight', 'tare':'Tare Weight', 'sku':'SKU',
-                'gunCode':'Gun Code', 'cost':'Cost', 'classID':'Product Class',
-                'pricePrompt':'Prompt For Price',
-                'prntOnChk':'Print on Check', 'disc':'Discountable',
-                'voidable':'Voidable', 'inactive':'Inactive',
-                'taxIncluded':'Tax Included', 'itemGrp':'Item Group',
-                'receipt':'Receipt Text', 'priceOver':'Allow Price Override',
-                'choiceGrps':'Choice Groups', 'ktchnPrint':'Kitchen Printers',
-                'covers':'Covers', 'storeID':'Store ID', 'reserved_18': '',
-                'reserved_28': ''}
-                
-    integerItems = ['classID', 'revCat', 'taxGrp', 'securityLvl', 'reportCat',
-                        'byWeight', 'pricePrompt', 'prntOnChk', 'disc',
-                        'voidable', 'inactive', 'taxIncluded', 'itemGrp',
-                        'priceOver']
 
-    string_properties = (3, 4, 5, 26)
+    IG_FIELD_SEQUENCE = {
+        'id': 2, 'name': 3, 'abbr1': 4, 'abbr2': 5,
+        'print_label': 6, 'price_levels': 7, 'product_class': 8,
+        'revenue_category': 9, 'tax_group': 10, 'security_level': 11,
+        'report_category': 12, 'sell_by_weight': 13,
+        'tare': 14, 'sku': 15, 'gun_code': 16,
+        'cost': 17, 'reserved_18': 18, 'prompt_for_price': 19,
+        'print_on_check': 20, 'is_discountable': 21, 'voidable': 22,
+        'inactive': 23, 'tax_included': 24,
+        'item_group': 25, 'receipt_text': 26,
+        'allow_price_override': 27, 'reserved_28': 28, 'choice_groups': 29,
+        'kitchen_printers': 30, 'covers': 31, 'store_id': 32
+    }
+    
+    TEXT_HEADERS = {
+        'id':'ID', 'name':'Name', 'abbr1':'Abbr1', 'abbr2':'Abbr2',
+        'print_label':'Printer Label', 'price_levels':'Prices',
+        'revenue_category':'Revenue Category', 'tax_group':'Tax Group',
+        'security_level':'Security Level', 'report_category':'Report Category',
+        'sell_by_weight':'By Weight', 'tare':'Tare Weight', 'sku':'SKU',
+        'gun_code':'Gun Code', 'cost':'Cost', 'product_class':'Product Class',
+        'prompt_for_price':'Prompt For Price',
+        'print_on_check':'Print on Check', 'is_discountable':'Discountable',
+        'voidable':'Voidable', 'inactive':'Inactive',
+        'tax_included':'Tax Included', 'item_group':'Item Group',
+        'receipt_text':'Receipt Text',
+        'allow_price_override':'Allow Price Override',
+        'choice_groups':'Choice Groups', 'kitchen_printers':'Kitchen Printers',
+        'covers':'Covers', 'store_id':'Store ID', 'reserved_18': '',
+        'reserved_28': ''
+    }
+                
+    INTEGER_FIELDS = [
+        'product_class', 'revenue_category', 'tax_group', 'security_level',
+        'report_category','sell_by_weight', 'prompt_for_price',
+        'print_on_check', 'is_discountable','voidable', 'inactive',
+        'tax_included', 'item_group', 'allow_price_override'
+    ]
+
+    STRING_FIELDS = (
+        IG_FIELD_SEQUENCE['name'],
+        IG_FIELD_SEQUENCE['abbr1'],
+        IG_FIELD_SEQUENCE['abbr2'],
+        IG_FIELD_SEQUENCE['receipt_text']
+    )
     
     def __init__(
-                self, itemID, name, abbr1=None, abbr2=None, printLabel=None,
-                priceLvls=None, classID=None, revCat=None, taxGrp=None,
-                securityLvl=0, reportCat=None, byWeight=None, tare=None,
-                sku=None, gunCode=None, cost=None, pricePrompt=0,
+                self, id, name, abbr1='', abbr2='', print_label=None,
+                priceLvls=None, product_class=None, revenue_category=None,
+                taxGrp=None, securityLvl=0, reportCat=None, byWeight=None,
+                tare=None, sku=None, gunCode=None, cost=None, pricePrompt=0,
                 prntOnChk=1, disc=1, voidable=1, inactive=0, taxIncluded=0,
-                itemGrp=None, receipt=None, priceOver=1, choiceGrps=None,
-                ktchnPrint=None, covers=0, storeID=0, reserved_18=0, reserved_28=0
+                itemGrp=None, receipt='', priceOver=1, choiceGrps=None,
+                ktchnPrint=None, covers=0, storeID=0, reserved_18=0,
+                reserved_28=0
                 ):
         
-        self.id = itemID #seq 2
-        self.name = re.sub(quoteMatch, removeQuotes, name) #seq 3
-        self.abbr1 = re.sub(quoteMatch, removeQuotes, abbr1) #seq 4
-        self.abbr2 = re.sub(quoteMatch, removeQuotes, abbr2) #seq 5
-        self.printerLabel = printLabel #seq 6
-        self.priceLvls = priceLvls #array in seq 7
-        self.classID = classID #seq 8
-        self.revCat = revCat #seq 9
-        self.taxGrp = taxGrp #seq 10
-        self.securityLvl = securityLvl #seq 11
-        self.reportCat = reportCat #seq 12
-        self.byWeight = byWeight #seq 13
+        self.id = int(id) #seq 2
+        self.name = re.sub(quoteMatch, remove_quotes, name) #seq 3
+        self.abbr1 = re.sub(quoteMatch, remove_quotes, abbr1) #seq 4
+        self.abbr2 = re.sub(quoteMatch, remove_quotes, abbr2) #seq 5
+        self.print_label = print_label #seq 6
+        self.price_levels = priceLvls #array in seq 7
+        self.product_class = int_cast(product_class) #seq 8
+        self.revenue_category = int_cast(revenue_category) #seq 9
+        self.tax_group = int_cast(taxGrp) #seq 10
+        self.security_level = int_cast(securityLvl) #seq 11
+        self.report_category = int_cast(reportCat) #seq 12
+        self.sell_by_weight = byWeight #seq 13
         self.tare = tare #seq 14
         self.sku = sku #seq 15
-        self.gunCode = gunCode #seq 16
+        self.gun_code = gunCode #seq 16
         self.cost = cost #seq 17
-        self.pricePrompt = pricePrompt #seq 19
-        self.prntOnChk = prntOnChk #seq 20
-        self.disc = disc #seq 21
+        self.prompt_for_price = pricePrompt #seq 19
+        self.print_on_check = prntOnChk #seq 20
+        self.is_discountable = disc #seq 21
         self.voidable = voidable #seq 22
         self.inactive = inactive #seq 23
-        self.taxIncluded = taxIncluded #seq 24
-        self.itemGrp = itemGrp #seq 25
-        self.receipt = re.sub(quoteMatch, removeQuotes, receipt) #seq 26
-        self.priceOver = priceOver #seq 27
-        self.choiceGrps = choiceGrps #array in seq 29
-        self.ktchnPrint = ktchnPrint #array in seq 30
+        self.tax_included = taxIncluded #seq 24
+        self.item_group = itemGrp #seq 25
+        self.receipt_text = re.sub(quoteMatch, remove_quotes, receipt) #seq 26
+        self.allow_price_override = priceOver #seq 27
+        self.choice_groups = choiceGrps #array in seq 29
+        self.kitchen_printers = ktchnPrint #array in seq 30
         self.covers = covers #seq 31
-        self.storeID = storeID #seq 32
+        self.store_id = storeID #seq 32
         self.reserved_18 = reserved_18
         self.reserved_28 = reserved_28
-        
 
-    def printItemDetails(self):
+    def print_item_details(self):
         for k,v in self.__dict__.items():
             print(k + ": " + v)
 
-    def printItemDetailsSorted(self):
+    def print_item_details_sorted(self):
         for k,v in sorted(self.__dict__.items()):
             print("{0}: {1}".format(k,v))
 
     def __str__(self):
         item_properties = []
-        for key, position in sorted(self.attributeMap.items(), key=lambda x: x[1]):
-            if position in self.string_properties:
-                item_properties.append('"{0}"'.format(getattr(self, key)))
+        for key, position in sorted(
+                self.IG_FIELD_SEQUENCE.items(), key=lambda x: x[1]):
+            if position in self.STRING_FIELDS:
+                attribute = '"{0}"'.format(getattr(self, key))
             else:
-                item_properties.append(str(getattr(self, key)))
+                attribute = str(getattr(self, key))
+
+            if not attribute or attribute == 'None' or attribute == '""':
+                attribute = ''
+            item_properties.append(attribute)
         return ",".join(item_properties)
         
-    def separatePriceLevels(self):
-        prices = self.priceLvls.strip("{}").split(";")
-        priceMap = {}
+    def separate_price_levels(self):
+        prices = self.price_levels.strip("{}").split(";")
+        price_map = dict()
         level = None
         i = 1
         for x in prices:
             if int(i) % 2 != 0:
                 level = x
             else:
-                priceMap[int(level)] = x
+                price_map[int(level)] = x
                 level = None
             i += 1
-        return priceMap
+        return price_map
 
-    def separatePriceLevelsSorted(self):
-        return sorted(self.separatePriceLevels().items())
 
-    def printPrices(self):
-        prices = self.separatePriceLevelsSorted()
-        for k,v in prices.items():
-            print("Price Level " + str(k) + ": " + str(v))
-            
     @staticmethod
-    def getFlagText(number):
+    def get_flag_as_text(number):
         if number == 0:
             return 'False'
         else:
             return 'True'
 
 
-def removeQuotes(match):
+def remove_quotes(match):
     match = str(match.group(0))
     return match.replace('"', '')
+
+
+def int_cast(value):
+    """Cast to int if possible, return unmodified otherwise"""
+    try:
+        return int(value)
+    except (TypeError, ValueError) as e:
+        return value

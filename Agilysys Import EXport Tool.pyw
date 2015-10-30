@@ -1,7 +1,9 @@
 #!python3
 
 # todo fix empty barcode description generation
-# todo add sentinel item generation for import verification
+# TODO Move to openpyxl module for *.xls(x/m) support
+# TODO Streamline UI
+# TODO Create Unit tests (may be easier if migrated to OO design
 
 import os
 import codecs
@@ -17,7 +19,7 @@ from xlrd import open_workbook
 
 from MenuItem import MenuItem
 
-__version__ = 'v0.10.28'
+__version__ = 'v0.10.30'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -528,7 +530,7 @@ def generate_ig_import(book, ig_text_file):
             if key in item_property_map.keys():
                 if field in STRING_FIELDS:
                     item_properties.append('"{0}"'.format(
-                        item_property_map[key]))
+                        item_property_map[key].strip('\r\n')))
                 else:
                     item_properties.append(safeIntCast(item_property_map[key]))
             else:

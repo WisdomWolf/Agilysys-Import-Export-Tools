@@ -2,6 +2,8 @@
 
 import re
 
+# TODO Fix sku handling so that {"123456", ""} can be properly built
+
 quoteMatch = re.compile(r'(^"+|"+$)')
 
 class MenuItem:
@@ -65,7 +67,7 @@ class MenuItem:
                 ):
         
         self.id = int(id) #seq 2
-        self.name = re.sub(quoteMatch, remove_quotes, name) #seq 3
+        self.name = re.sub(quoteMatch, remove_quotes, name).strip('\r\n') #seq 3
         self.abbr1 = re.sub(quoteMatch, remove_quotes, abbr1) #seq 4
         self.abbr2 = re.sub(quoteMatch, remove_quotes, abbr2) #seq 5
         self.print_label = print_label #seq 6
@@ -77,7 +79,7 @@ class MenuItem:
         self.report_category = int_cast(reportCat) #seq 12
         self.sell_by_weight = byWeight #seq 13
         self.tare = tare #seq 14
-        self.sku = sku #seq 15
+        self.sku = str(sku).strip().split(sep='.', maxsplit=1)[0] #seq 15
         self.gun_code = gunCode #seq 16
         self.cost = cost #seq 17
         self.prompt_for_price = pricePrompt #seq 19
@@ -110,15 +112,17 @@ class MenuItem:
                 self.IG_FIELD_SEQUENCE.items(), key=lambda x: x[1]):
             if position in self.STRING_FIELDS:
                 attribute = '"{0}"'.format(getattr(self, key))
+            elif key == 'sku':
+                attribute = self.get_barcode_string()
             else:
-                attribute = str(getattr(self, key))
+                attribute = str(getattr(self, key)).replace(';', ',')
 
             if not attribute or attribute == 'None' or attribute == '""':
                 attribute = ''
             item_properties.append(attribute)
         return ",".join(item_properties)
         
-    def separate_price_levels(self):
+    def get_prices_dict(self):
         prices = self.price_levels.strip("{}").split(";")
         price_map = dict()
         level = None
@@ -131,6 +135,23 @@ class MenuItem:
                 level = None
             i += 1
         return price_map
+
+    def get_barcode_dict(self):
+        barcodes = self.sku.strip("{}").split(";")
+        barcode_map = dict()
+        for i, x in enumerate(barcodes, start=1):
+            if i % 2:
+                sku = x.strip('"')
+            else:
+                barcode_map[sku] = x.strip('"')
+                sku = None
+        return barcode_map
+
+    def get_barcode_string(self):
+        barcodes = []
+        for sku, description in self.get_barcode_dict().items():
+            barcodes.append('"{0}","{1}"'.format(sku, description))
+        return '{{{0}}}'.format(','.join(barcodes))
 
 
     @staticmethod

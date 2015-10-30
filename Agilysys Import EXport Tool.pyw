@@ -1,6 +1,6 @@
 #!python3
 
-# todo fix empty barcode description generation
+# TODO fix empty barcode description generation
 # TODO Move to openpyxl module for *.xls(x/m) support
 # TODO Streamline UI
 # TODO Create Unit tests (may be easier if migrated to OO design
@@ -170,7 +170,7 @@ def count_price_levels():
     num_price_levels = 0
     price_level_list = []
     for item in itemList:
-        levels = item.separate_price_levels()
+        levels = item.get_prices_dict()
         for level in levels.keys():
             if level not in price_level_list:
                 price_level_list.append(level)
@@ -241,8 +241,8 @@ def generateFullExcel(excel_file, items=None,
 
         if expandPriceLevels:
             for p in range(1, (numberOfPriceLevels + 1)):
-                if p in item.separate_price_levels():
-                    price = item.separate_price_levels()[p]
+                if p in item.get_prices_dict():
+                    price = item.get_prices_dict()[p]
                 else:
                     price = ''
                 r = p - 1
@@ -412,8 +412,8 @@ def generate_custom_excel_spreadsheet(
             if 'priceLvl' in key:
                 # Extract number from priceLvl key
                 p = int(key[key.find('l') + 1:])
-                if p in item.separate_price_levels():
-                    price = item.separate_price_levels()[p]
+                if p in item.get_prices_dict():
+                    price = item.get_prices_dict()[p]
                 else:
                     price = ''
 
@@ -486,6 +486,7 @@ def generateIGUpdate(excel_file, ig_text_file):
                         message='IG Item Import created successfully.')
 
 
+# TODO rewrite to leverage MenuItem class
 def generate_ig_import(book, ig_text_file):
     """Generates IG Import File from custom Excel workbook.
 
@@ -555,7 +556,6 @@ def generate_ig_import(book, ig_text_file):
 
 
 # TODO Correct/Replace save path selection
-# TODO Get better records for revenue categories
 def generate_standardized_ig_imports(book, save_path):
     """Generates IG import files from POS Configuration Worksheet.
 
@@ -586,6 +586,7 @@ def generate_standardized_ig_imports(book, save_path):
     product_class_errors = []
     priced_items = []
     unpriced_items = []
+    item_list = []
 
     for row in range(5, sheet.nrows):
         fields = []
@@ -640,30 +641,23 @@ def generate_standardized_ig_imports(book, save_path):
                         revenue_category=revenue_category,
                         product_class=product_class, sku=sku,
                         priceLvls=prices)
+        item_list.append(item)
         line = '{0},{1}'.format(update_type, item)
         if price_map:
             priced_items.append(line)
         else:
             unpriced_items.append(line)
 
-    # Seems like an inelegant solution, consider revising
+    pdb.set_trace()
     print('iteration complete, writing files')
-    write_to_text_file(ig_priced_file, priced_items)
-    write_to_text_file(ig_unpriced_file, unpriced_items)
-    write_to_text_file(product_class_error_file, product_class_errors)
-    write_to_text_file(revenue_category_error_file, revenue_category_errors)
-    # with open(ig_priced_file, 'w+') as pf, \
-    #         open(ig_unpriced_file, 'w+') as upf, \
-    #         open(product_class_error_file, 'w+') as pef, \
-    #         open(revenue_category_error_file, 'w+') as ref:
-    #     for item in priced_items:
-    #         pf.write('"{0}",{1}\n'.format(update_type, item))
-    #     for item in unpriced_items:
-    #         upf.write('"{0}",{1}\n'.format(update_type, item))
-    #     for error in product_class_errors:
-    #         pef.write('{0}\n'.format(error))
-    #     for error in revenue_category_errors:
-    #         ref.write('{0}\n'.format(error))
+    if priced_items:
+        write_to_text_file(ig_priced_file, priced_items)
+    if unpriced_items:
+        write_to_text_file(ig_unpriced_file, unpriced_items)
+    if product_class_errors:
+        write_to_text_file(product_class_error_file, product_class_errors)
+    if revenue_category_errors:
+        write_to_text_file(revenue_category_error_file, revenue_category_errors)
 
     print('IG import file creations complete.')
     messagebox.showinfo(title='Success',
@@ -710,22 +704,6 @@ def get_product_classes(sheet):
             print("oops, couldn't read row {0} from Product Classes".format(
                 row))
     return product_classes
-
-
-def translate_product_class(product_class):
-    """Returns full product class names from abbreviated form"""
-    # 'BEV>Coffee Cold' = 'Beverage > Coffee Cold'
-    class_abbreviations = {
-        'ADD': 'Additions', 'ALC': 'Alcohol', 'BAK': 'Bakery',
-        'BEV': 'Beverage', 'BFK': 'Breakfast', 'CON': 'Condiment',
-        'ENT': 'Entrée', 'IMP': 'Impulse', 'RET': 'Retail', 'SID': 'Side'
-    }
-    for abbreviation in class_abbreviations:
-        product_class = product_class.replace(abbreviation,
-                                              class_abbreviations[abbreviation])
-    # Probably want to handle via regex so that ' > ' doesn't become '  >  '
-    product_class = product_class.replace('>', ' > ')
-    return product_class
 
 
 def get_file_type(filename):

@@ -145,7 +145,7 @@ class MenuItem:
             else:
                 barcode_map[sku] = x.strip('"')
                 sku = None
-        return barcode_map
+        return barcode_map or {sku: ''}
 
     def get_barcode_string(self):
         barcodes = []

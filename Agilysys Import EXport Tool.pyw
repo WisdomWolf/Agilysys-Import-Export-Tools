@@ -605,7 +605,6 @@ def generate_standardized_ig_imports(book, save_path):
                 price = sheet.cell_value(row, price_level)
             price_map[level] = price
 
-        # pdb.set_trace()
         if price_map:
             prices = build_ig_price_array(price_map)
 
@@ -648,7 +647,6 @@ def generate_standardized_ig_imports(book, save_path):
         else:
             unpriced_items.append(line)
 
-    pdb.set_trace()
     print('iteration complete, writing files')
     if priced_items:
         write_to_text_file(ig_priced_file, priced_items)

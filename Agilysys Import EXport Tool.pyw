@@ -1,9 +1,9 @@
 #!python3
 
-# TODO fix empty barcode description generation
 # TODO Move to openpyxl module for *.xls(x/m) support
+# TODO Create abstract methods for r/w operations on Excel docs
 # TODO Streamline UI
-# TODO Create Unit tests (may be easier if migrated to OO design
+# TODO Create Unit tests (may be easier if migrated to OO design)
 
 import os
 import codecs
@@ -103,8 +103,8 @@ def directory_display(directory):
     return directory
 
 
-# Not working in current incarnation, requires modification
 def write_to_text_file(file, *args):
+    """Writes contents of one or more lists to a file. One item per line."""
     output_list = []
     with open(file, 'w+') as f:
         for arg in args:
@@ -164,7 +164,6 @@ def pre_parse_ig_file(file_name):
 
 
 # Might be worth moving this to MenuItem class
-# Leads to lots of empty columns with high price level ids
 def count_price_levels():
     """Returns total number of price levels"""
     num_price_levels = 0

@@ -2,8 +2,6 @@
 
 import re
 
-# TODO Fix sku handling so that {"123456", ""} can be properly built
-
 quoteMatch = re.compile(r'(^"+|"+$)')
 
 class MenuItem:

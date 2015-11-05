@@ -1,6 +1,6 @@
 #!python3
 
-# TODO Move to openpyxl module for *.xls(x/m) support
+# TODO Create Methods using openpyxl module for *.xls(x/m) support
 # TODO Create abstract methods for r/w operations on Excel docs
 # TODO Streamline UI
 # TODO Create Unit tests (may be easier if migrated to OO design)
@@ -13,6 +13,7 @@ import time
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog
 from configparser import ConfigParser
+from idlelib.ToolTip import *
 
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
@@ -20,7 +21,7 @@ from openpyxl import load_workbook
 
 from MenuItem import MenuItem
 
-__version__ = 'v0.10.30'
+__version__ = 'v0.11.5'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -661,7 +662,15 @@ def generate_standardized_ig_imports(book, save_path):
 
     print('IG import file creations complete.')
     messagebox.showinfo(title='Success',
-                        message='IG import files created successfully.')
+                        message='IG import files have been generated:\n\n{0}\n\n{1}\n\n'
+                                'Located in the following directory:\n\n{2}\n\n'
+                                'Please send these files to Agilysys'
+                                ' for importing into InfoGenesis'.format(
+                                    os.path.basename(ig_priced_file),
+                                    os.path.basename(ig_unpriced_file),
+                                    os.path.dirname(ig_priced_file)
+                                )
+                        )
 
 def generate_standardized_ig_imports_xls(book, save_path):
     """Generates IG import files from POS Configuration Worksheet.
@@ -1070,21 +1079,23 @@ if hasattr(sys, '_MEIPASS'):
 
 menubar = Menu(root)
 menu_file = Menu(menubar)
-menu_options = Menu(menubar)
+menu_debug_options = Menu(menubar)
 menu_help = Menu(menubar)
 menubar.add_cascade(menu=menu_file, label='File')
-menubar.add_cascade(menu=menu_options, label='Options')
 menubar.add_cascade(menu=menu_help, label='Help')
+# Add Debug Menu only when not compiled
+if not hasattr(sys, '_MEIPASS'):
+    menubar.add_cascade(menu=menu_debug_options, label='Debug')
 
 menu_file.add_command(label='Open...', command=open_file)
 menu_file.add_command(label='Close', command=root.quit)
 
-menu_options.add_checkbutton(label='Remove Unpriced Items',
-                             variable=noUnpriced, onvalue=1, offvalue=0)
-menu_options.add_checkbutton(label='Separate Price Level',
-                             variable=expandPriceLevels, onvalue=1, offvalue=0)
-menu_options.add_command(label='Display Vars',
-                         command=lambda: show_var_states(checkbox_variable_map))
+menu_debug_options.add_checkbutton(label='Remove Unpriced Items',
+                                   variable=noUnpriced, onvalue=1, offvalue=0)
+menu_debug_options.add_checkbutton(label='Separate Price Level',
+                                   variable=expandPriceLevels, onvalue=1, offvalue=0)
+menu_debug_options.add_command(label='Display Vars',
+                               command=lambda: show_var_states(checkbox_variable_map))
 
 menu_help.add_command(label='About', command=display_about)
 
@@ -1093,14 +1104,19 @@ mainframe.grid(column=0, row=1, sticky=(N, W, E, S))
 mainframe.columnconfigure(0, weight=1)
 mainframe.rowconfigure(1, weight=1)
 
-ttk.Label(mainframe, text="Input File:").grid(
+ttk.Label(mainframe, text="File:").grid(
     column=1, row=1, sticky=(N, W, E))
-openFile_entry = ttk.Entry(mainframe, width=40, textvariable=file_display_string)
+openFile_entry = ttk.Entry(mainframe, width=40, textvariable=file_display_string, state='disabled')
 openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
+button_open = ttk.Button(mainframe, text='...', command=open_file)
+button_open.grid(column=2, row=2, sticky=(W))
+open_tooltip = ToolTip(button_open, 'Select the Excel file required to'
+                                    ' generate the IG formatted CSV file')
 button_ig = ttk.Button(mainframe, text='Generate IG Update',
                        command=convert_to_ig_format)
 button_ig.grid(column=1, row=3)
+ig_tooltip = ToolTip(button_ig, 'Generate IG formatted CSV file(s)')
 button_excel_complete = ttk.Button(mainframe, text='Create Full xls',
                                    command=lambda: convert_to_excel('complete'))
 button_excel_complete.grid(column=1, row=6)

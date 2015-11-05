@@ -150,8 +150,12 @@ class MenuItem:
     def get_barcode_string(self):
         barcodes = []
         for sku, description in self.get_barcode_dict().items():
-            barcodes.append('"{0}","{1}"'.format(sku, description))
-        return '{{{0}}}'.format(','.join(barcodes))
+            if sku:
+                barcodes.append('"{0}","{1}"'.format(sku, description))
+        if barcodes:
+            return '{{{0}}}'.format(','.join(barcodes))
+        else:
+            return ''
 
 
     @staticmethod

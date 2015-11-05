@@ -16,6 +16,7 @@ from configparser import ConfigParser
 
 from xlwt import Workbook, easyxf
 from xlrd import open_workbook
+from openpyxl import load_workbook
 
 from MenuItem import MenuItem
 
@@ -563,6 +564,113 @@ def generate_standardized_ig_imports(book, save_path):
     base_filename -- filename used as base for priced and unpriced output files
     """
     print('Generating standardized IG Import files')
+    sheet = book.get_sheet_by_name('Menu Items & Pricing')
+    ig_sheet = book.get_sheet_by_name('InfoGenesis')
+    product_sheet = book.get_sheet_by_name('Product Classes')
+    revenue_sheet = book.get_sheet_by_name('Revenue Categories')
+    product_classes = get_product_classes(product_sheet)
+    revenue_categories = get_revenue_categories(revenue_sheet)
+    ig_priced_file = '{0} - MI_Imp_priced.txt'.format(save_path)
+    ig_unpriced_file = '{0} - MI_Imp_unpriced.txt'.format(save_path)
+    product_class_error_file = os.path.join(
+        os.path.dirname(save_path), 'missing_product_classes.txt')
+    revenue_category_error_file = os.path.join(
+        os.path.dirname(save_path), 'missing_revenue_categories.txt')
+
+    max_item_id = int(list(ig_sheet.rows)[-1][1].value)
+    last_item_id = 1
+    item_ids = set()
+
+    revenue_category_errors = []
+    product_class_errors = []
+    priced_items = []
+    unpriced_items = []
+    item_list = []
+
+    for i, row in enumerate(sheet.rows):
+        if i <= 5:
+            continue
+        fields = []
+        price_map = dict()
+        update_type = '"A"'
+        prices = '{1,$0.00}'
+
+        for i, cell in enumerate(row):
+            if i < 8:
+                property = cell.value
+                fields.append(property)
+            else:
+                price_level = i
+                level = price_level - 7
+                price = row[price_level].value or ''
+                if price == '':
+                    continue
+                price_map[level] = price
+
+        if price_map:
+            prices = build_ig_price_array(price_map)
+
+        item_id = fields[1]
+        if item_id in item_ids:
+            raise IndexError('duplicate id used')
+        if item_id > max_item_id or last_item_id < item_id < 1000000:
+            item_id = last_item_id
+            last_item_id += 1
+        rev_cat = fields[6]
+        name = fields[4]
+        prod_class = fields[7]
+        sku = fields[3] or ''
+
+        try:
+            revenue_category = revenue_categories[rev_cat]
+        except KeyError:
+            if rev_cat not in revenue_category_errors:
+                revenue_category_errors.append(rev_cat)
+                print('Unable to get value for {0} category'.format(rev_cat))
+            revenue_category = None
+
+        try:
+            product_class = product_classes[prod_class]
+        except KeyError:
+            if prod_class not in product_class_errors:
+                product_class_errors.append(prod_class)
+                print('Unable to get value for {0} product class'.format(
+                    prod_class))
+            product_class = None
+
+        item = MenuItem(id=item_id, name=name,
+                        revenue_category=revenue_category,
+                        product_class=product_class, sku=sku,
+                        priceLvls=prices)
+        item_list.append(item)
+        line = '{0},{1}'.format(update_type, item)
+        if price_map:
+            priced_items.append(line)
+        else:
+            unpriced_items.append(line)
+
+    print('iteration complete, writing files')
+    if priced_items:
+        write_to_text_file(ig_priced_file, priced_items)
+    if unpriced_items:
+        write_to_text_file(ig_unpriced_file, unpriced_items)
+    if product_class_errors:
+        write_to_text_file(product_class_error_file, product_class_errors)
+    if revenue_category_errors:
+        write_to_text_file(revenue_category_error_file, revenue_category_errors)
+
+    print('IG import file creations complete.')
+    messagebox.showinfo(title='Success',
+                        message='IG import files created successfully.')
+
+def generate_standardized_ig_imports_xls(book, save_path):
+    """Generates IG import files from POS Configuration Worksheet.
+
+    Keyword arguments:
+    book -- Excel workbook
+    base_filename -- filename used as base for priced and unpriced output files
+    """
+    print('Generating standardized IG Import files')
     sheet = book.sheet_by_name('Menu Items & Pricing')
     ig_sheet = book.sheet_by_name('InfoGenesis')
     product_sheet = book.sheet_by_name('Product Classes')
@@ -664,13 +772,20 @@ def generate_standardized_ig_imports(book, save_path):
 def get_revenue_categories(sheet):
     """Returns revenue categories dictionary from internal spreadsheet"""
     revenue_categories = dict()
-    for row in range(1, sheet.nrows):
+    try:
+        for row in range(1, sheet.nrows):
+            try:
+                revenue_categories[sheet.cell_value(row, 1)] = \
+                    sheet.cell_value(row, 0)
+            except IndexError:
+                print("oops, couldn't read row {0} from Revenue Categories".format(
+                    row))
+    except AttributeError:
         try:
-            revenue_categories[sheet.cell_value(row, 1)] = \
-                sheet.cell_value(row, 0)
-        except IndexError:
-            print("oops, couldn't read row {0} from Revenue Categories".format(
-                row))
+            for row in sheet.rows:
+                revenue_categories[row[1].value] = row[0].value
+        except AttributeError:
+            print("oops, couldn't read row from Revenue Categories")
 
     return revenue_categories
 
@@ -678,37 +793,52 @@ def get_revenue_categories(sheet):
 def get_product_categories(sheet):
     """Returns product classes dict from custom spreadsheet"""
     product_classes = dict()
-    for row in range(1, sheet.nrows):
-        try:
-            product_classes[sheet.cell_value(row, 0)] = \
-                sheet.cell_value(row, 1)
-        except IndexError:
-            print("oops, couldn't read row {0} from Product Classes".format(
-                row))
-
+    try:
+        for row in range(1, sheet.nrows):
+            try:
+                product_classes[sheet.cell_value(row, 0)] = \
+                    sheet.cell_value(row, 1)
+            except IndexError:
+                print("oops, couldn't read row {0} from Product Classes".format(
+                    row))
+    except AttributeError:
+        for row in sheet.rows:
+            try:
+                product_classes[row[0].value] = row[1].value
+            except:
+                print("oops, couldn't read row from Product Classes")
     return product_classes
 
 
 def get_product_classes(sheet):
     """Returns product classes dict from internal spreadsheet"""
     product_classes = dict()
-    for row in range(1, sheet.nrows):
-        pc = sheet.cell_value(row, 1)
-        pid = sheet.cell_value(row, 0)
-        try:
-            product_classes[pc] = pid
-        except IndexError:
-            print("oops, couldn't read row {0} from Product Classes".format(
-                row))
+    try:
+        for row in range(1, sheet.nrows):
+            pc = sheet.cell_value(row, 1)
+            pid = sheet.cell_value(row, 0)
+            try:
+                product_classes[pc] = pid
+            except IndexError:
+                print("oops, couldn't read row {0} from Product Classes".format(
+                    row))
+    except AttributeError:
+        for row in sheet.rows:
+            try:
+                product_classes[row[1].value] = row[0].value
+            except:
+                print("oops, couldn't read row from Product Class")
+
     return product_classes
 
 
 def get_file_type(filename):
     """Return the file type for filename"""
-    if filename.rsplit('.', maxsplit=1)[1] == 'xls':
+    file_extension = filename.rsplit('.', maxsplit=1)[1]
+    if file_extension == 'xls' or file_extension == 'xlsx':
         print('Input file is xls, processing as EXCEL_FILE')
         return EXCEL_FILE
-    elif filename.rsplit('.', maxsplit=1)[1] == 'txt':
+    elif file_extension == 'txt':
         file = codecs.open(filename, 'r', 'utf8')
         if len(file.readline().split(",")) > 20:
             return IG_EXPORT
@@ -726,11 +856,15 @@ def convert_to_ig_format():
         'initialfile': os.path.join(os.path.dirname(in_file), 'MI_IMP.txt')
     }
     file_extension = in_file.rsplit('.', maxsplit=1)[1]
-    if file_extension == 'xls' or file_extension == 'xlsx':
+    if file_extension == 'xlsx':
+        book = load_workbook(in_file, read_only=True)
+        generate_standardized_ig_imports(book, in_file)
+    elif file_extension == 'xls':
         book = open_workbook(in_file)
         sheet = book.sheet_by_index(0)
+
         if book.nsheets > 1:
-            generate_standardized_ig_imports(book, in_file)
+            generate_standardized_ig_imports_xls(book, in_file)
         else:
             file_save_path = save_file_as(options)
             if file_save_path:
@@ -792,7 +926,10 @@ def build_ig_price_array(price_map):
             price_sequence = ''
             if '(' in str(price) or ')' in str(price):
                 price_is_negative = True
-            price = '{0:.2f}'.format(float(str(price).strip('$(){}')))
+            try:
+                price = '{0:.2f}'.format(float(str(price).strip('$(){}')))
+            except ValueError:
+                price = '0'
             if price_is_negative:
                 price_sequence = '{0},(${1})'.format(level, price)
             else:

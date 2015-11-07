@@ -54,45 +54,30 @@ class MenuItem:
     )
     
     def __init__(
-                self, id, name, abbr1=None, abbr2=None, print_label=None,
+                self, id, name, abbr1='', abbr2='', print_label=None,
                 priceLvls=None, product_class=None, revenue_category=None,
                 taxGrp=None, securityLvl=0, reportCat=None, byWeight=None,
                 tare=None, sku=None, gunCode=None, cost=None, pricePrompt=0,
                 prntOnChk=1, disc=1, voidable=1, inactive=0, taxIncluded=0,
-                itemGrp=None, receipt=None, priceOver=1, choiceGrps=None,
+                itemGrp=None, receipt='', priceOver=1, choiceGrps=None,
                 ktchnPrint=None, covers=0, storeID=0, reserved_18=0,
                 reserved_28=0
                 ):
-        
+
         self.id = int(id) #seq 2
-        self.name = re.sub(quoteMatch, remove_quotes, name) #seq 3
-        if abbr1:
-            self.abbr1 = re.sub(quoteMatch, remove_quotes, abbr1) #seq 4
-        else:
-            self.abbr1 = ''
-        if abbr2:
-            self.abbr2 = re.sub(quoteMatch, remove_quotes, abbr2) #seq 5
-        else:
-            self.abbr2 = ''
+        self.name = re.sub(quoteMatch, remove_quotes, name).strip('\r\n') #seq 3
+        self.abbr1 = re.sub(quoteMatch, remove_quotes, abbr1) #seq 4
+        self.abbr2 = re.sub(quoteMatch, remove_quotes, abbr2) #seq 5
         self.print_label = print_label #seq 6
         self.price_levels = priceLvls #array in seq 7
-        self.product_class = int(product_class) #seq 8
-        if revenue_category:
-            self.revenue_category = int(revenue_category) #seq 9
-        else:
-            self.revenue_category = revenue_category
-        if taxGrp:
-            self.tax_group = int(taxGrp) #seq 10
-        else:
-            self.tax_group = taxGrp
-        self.security_level = int(securityLvl) #seq 11
-        if reportCat:
-            self.report_category = int(reportCat) #seq 12
-        else:
-            self.report_category = reportCat
+        self.product_class = int_cast(product_class) or 0 #seq 8
+        self.revenue_category = int_cast(revenue_category) or 0 #seq 9
+        self.tax_group = int_cast(taxGrp) #seq 10
+        self.security_level = int_cast(securityLvl) #seq 11
+        self.report_category = int_cast(reportCat) #seq 12
         self.sell_by_weight = byWeight #seq 13
         self.tare = tare #seq 14
-        self.sku = sku #seq 15
+        self.sku = str(sku).strip().split(sep='.', maxsplit=1)[0] #seq 15
         self.gun_code = gunCode #seq 16
         self.cost = cost #seq 17
         self.prompt_for_price = pricePrompt #seq 19
@@ -102,10 +87,7 @@ class MenuItem:
         self.inactive = inactive #seq 23
         self.tax_included = taxIncluded #seq 24
         self.item_group = itemGrp #seq 25
-        if receipt:
-            self.receipt_text = re.sub(quoteMatch, remove_quotes, receipt) #seq 26
-        else:
-            self.receipt_text = ''
+        self.receipt_text = re.sub(quoteMatch, remove_quotes, receipt) #seq 26
         self.allow_price_override = priceOver #seq 27
         self.choice_groups = choiceGrps #array in seq 29
         self.kitchen_printers = ktchnPrint #array in seq 30
@@ -128,15 +110,17 @@ class MenuItem:
                 self.IG_FIELD_SEQUENCE.items(), key=lambda x: x[1]):
             if position in self.STRING_FIELDS:
                 attribute = '"{0}"'.format(getattr(self, key))
+            elif key == 'sku':
+                attribute = self.get_barcode_string()
             else:
-                attribute = str(getattr(self, key))
+                attribute = str(getattr(self, key)).replace(';', ',')
 
             if not attribute or attribute == 'None' or attribute == '""':
                 attribute = ''
             item_properties.append(attribute)
         return ",".join(item_properties)
         
-    def separate_price_levels(self):
+    def get_prices_dict(self):
         prices = self.price_levels.strip("{}").split(";")
         price_map = dict()
         level = None
@@ -150,6 +134,27 @@ class MenuItem:
             i += 1
         return price_map
 
+    def get_barcode_dict(self):
+        barcodes = self.sku.strip("{}").split(";")
+        barcode_map = dict()
+        for i, x in enumerate(barcodes, start=1):
+            if i % 2:
+                sku = x.strip('"')
+            else:
+                barcode_map[sku] = x.strip('"')
+                sku = None
+        return barcode_map or {sku: ''}
+
+    def get_barcode_string(self):
+        barcodes = []
+        for sku, description in self.get_barcode_dict().items():
+            if sku:
+                barcodes.append('"{0}","{1}"'.format(sku, description))
+        if barcodes:
+            return '{{{0}}}'.format(','.join(barcodes))
+        else:
+            return ''
+
 
     @staticmethod
     def get_flag_as_text(number):
@@ -162,3 +167,11 @@ class MenuItem:
 def remove_quotes(match):
     match = str(match.group(0))
     return match.replace('"', '')
+
+
+def int_cast(value):
+    """Cast to int if possible, return unmodified otherwise"""
+    try:
+        return int(value)
+    except (TypeError, ValueError) as e:
+        return value

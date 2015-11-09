@@ -20,7 +20,7 @@ from xlrd import open_workbook
 from openpyxl import load_workbook
 from MenuItem import MenuItem
 
-__version__ = 'v0.11.7'
+__version__ = 'v0.11.9'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -1134,7 +1134,7 @@ button_excel_custom = ttk.Button(mainframe, text='Create Custom xls',
                                  command=lambda: convert_to_excel('custom'))
 button_excel_custom.grid(column=1, row=7)
 
-simplifyButtons = [button_excel_complete, button_excel_custom]
+simplifyButtons = [button_excel_custom]
 hideable_buttons = [button_excel_complete, button_excel_custom, button_ig]
 
 for child in mainframe.winfo_children():

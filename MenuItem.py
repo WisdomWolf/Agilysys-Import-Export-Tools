@@ -63,15 +63,15 @@ class MenuItem:
                 ktchnPrint=None, covers=0, storeID=0, reserved_18=0,
                 reserved_28=0
                 ):
-        
+
         self.id = int(id) #seq 2
         self.name = re.sub(quoteMatch, remove_quotes, name).strip('\r\n') #seq 3
         self.abbr1 = re.sub(quoteMatch, remove_quotes, abbr1) #seq 4
         self.abbr2 = re.sub(quoteMatch, remove_quotes, abbr2) #seq 5
         self.print_label = print_label #seq 6
         self.price_levels = priceLvls #array in seq 7
-        self.product_class = int_cast(product_class) #seq 8
-        self.revenue_category = int_cast(revenue_category) #seq 9
+        self.product_class = int_cast(product_class) or 0 #seq 8
+        self.revenue_category = int_cast(revenue_category) or 0 #seq 9
         self.tax_group = int_cast(taxGrp) #seq 10
         self.security_level = int_cast(securityLvl) #seq 11
         self.report_category = int_cast(reportCat) #seq 12

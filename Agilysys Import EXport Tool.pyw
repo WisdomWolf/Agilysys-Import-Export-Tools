@@ -23,7 +23,7 @@ from xlrd import open_workbook
 from openpyxl import load_workbook
 from MenuItem import MenuItem
 
-__version__ = 'v0.11.13'
+__version__ = 'v0.11.14'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -457,18 +457,16 @@ def generate_custom_excel_spreadsheet(
         # Need additional logic to filter empty price levels
         if price_level_list:
             logging.debug('adding prices from price level list')
-            for price_level in price_level_list:
+            for price_level in sorted(price_level_list):
                 price_headers.append('Price Level ' + str(price_level))
         else:
             logging.debug('adding prices from num price levels')
             for price_level in range(num_price_levels):
                 price_headers.append('Price Level ' + str(price_level + 1))
 
-        price_headers.reverse()
-        for level, price in zip(reversed(range(1, len(price_headers) + 1)),
-                                price_headers):
-            headers.insert(pricePos, price)
-            keynames.insert(pricePos, ('priceLvl' + str(level)))
+        for level in reversed(price_headers):
+            headers.insert(pricePos, level)
+            keynames.insert(pricePos, ('priceLvl{0}'.format(level[12:])))
 
     # Write Headers
     for header, key, row in zip(headers, keynames, range(len(headers))):

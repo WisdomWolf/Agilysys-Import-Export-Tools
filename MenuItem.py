@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import re
+import logging
 
 quoteMatch = re.compile(r'(^"+|"+$)')
 
@@ -156,12 +157,27 @@ class MenuItem:
             return ''
 
 
-    @staticmethod
-    def get_flag_as_text(number):
-        if number == 0:
-            return 'False'
-        else:
-            return 'True'
+def count_price_levels(itemList):
+    """Returns total number of price levels"""
+    logging.debug('counting price levels')
+    num_price_levels = 0
+    price_level_list = []
+    for item in itemList:
+        levels = item.get_prices_dict()
+        for level in levels.keys():
+            if level not in price_level_list:
+                price_level_list.append(level)
+
+    logging.debug('returning results of price level count')
+    return price_level_list
+
+
+@staticmethod
+def get_flag_as_text(number):
+    if number == 0:
+        return 'False'
+    else:
+        return 'True'
 
 
 def remove_quotes(match):

@@ -5,7 +5,7 @@ import logging
 
 quoteMatch = re.compile(r'(^"+|"+$)')
 
-class MenuItem:
+class MenuItem(object):
     """An object to simplify item property assignment"""
 
     IG_FIELD_SEQUENCE = {

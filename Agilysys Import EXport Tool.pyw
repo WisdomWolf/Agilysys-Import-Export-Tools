@@ -23,7 +23,7 @@ from xlrd import open_workbook
 from openpyxl import load_workbook
 from MenuItem import MenuItem
 
-__version__ = 'v0.11.24'
+__version__ = 'v0.12.3'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -67,7 +67,8 @@ console_handler = logging.StreamHandler()
 root_logger.addHandler(console_handler)
 file_handler.setFormatter(log_formatter)
 console_handler.setFormatter(log_formatter)
-logging.error('Log Level={0}'.format(logging.getLevelName(log_level)))
+if not getattr(sys, 'frozen', False):
+    logging.error('Log Level={0}'.format(logging.getLevelName(log_level)))
 
 IG_EXPORT = 1
 EXCEL_FILE = 3

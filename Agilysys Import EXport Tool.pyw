@@ -1,4 +1,4 @@
-#!python3
+#! /usr/bin/python3
 
 # TODO Create Methods using openpyxl module for *.xls(x/m) support
 # TODO Create abstract methods for r/w operations on Excel docs
@@ -12,6 +12,7 @@ import datetime
 import logging
 import pdb
 import subprocess
+import sys
 import time
 import xlrd
 from tkinter import *
@@ -23,7 +24,7 @@ from xlrd import open_workbook
 from openpyxl import load_workbook
 from MenuItem import MenuItem
 
-__version__ = 'v0.12.3'
+__version__ = 'v0.12.4'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -69,6 +70,7 @@ file_handler.setFormatter(log_formatter)
 console_handler.setFormatter(log_formatter)
 if not getattr(sys, 'frozen', False):
     logging.error('Log Level={0}'.format(logging.getLevelName(log_level)))
+    logging.error('Python {}'.format(sys.version))
 
 IG_EXPORT = 1
 EXCEL_FILE = 3
@@ -216,15 +218,12 @@ def count_price_levels():
 
 
 # noinspection PyShadowingNames,PyShadowingNames
-def generate_custom_excel_spreadsheet(
-        excel_file, items=None, excludeUnpriced=True
-):
+def generate_custom_excel_spreadsheet(excel_file, items=None):
     """Generates Excel spreadsheet from IG Export file
 
     Keyword arguements:
     excel_file -- file path to save resulting workbook
     items -- list of items to parse
-    excludeUnpriced -- ignore items lacking a price when generating export
     """
     items = items or itemList
     logging.debug('preparing to convert to custom Excel')
@@ -429,9 +428,11 @@ def generate_ig_import(book, ig_text_file):
         '"A",7110001,"{0}",,,,{{1,$0.00}},,,,,,,,,,,,,,,,,,,,,,,,,'.format(
             time.strftime('%c', time.localtime())))
     if updated_items:
+        logging.info('IG Item Import created successfully')
         messagebox.showinfo(title='Success',
                             message='IG Item Import created successfully.')
     else:
+        logging.info('Empty IG Item Import created')
         messagebox.showinfo(
             title='Oops',
             message="No items processed.  "
@@ -725,12 +726,8 @@ def convert_to_ig_format():
                         generateIGUpdate(book, text_file)
 
 
-def convert_to_excel(type='custom'):
-    """Initiates conversion from IG Format to Excel spreadsheet
-
-    Keyword arguments:
-    type -- full or custom spreadsheet
-    """
+def convert_to_excel():
+    """Initiates conversion from IG Format to Excel spreadsheet"""
     export = in_file
 
     try:
@@ -740,14 +737,9 @@ def convert_to_excel(type='custom'):
             pre_parse_ig_file(export)
     file_parts = str(os.path.basename(in_file)).rsplit('.', maxsplit=1)
 
-    if type == 'complete':
-        default_filename = file_parts[0] + '_complete.xls'
-    elif type == 'custom':
-        default_filename = file_parts[0] + '_custom.xls'
-        display_item_property_selections()
-        root.wait_window(csWin)
-    else:
-        raise TypeError("Can't convert to excel using {0} type".format(type))
+    default_filename = file_parts[0] + '_custom.xls'
+    display_item_property_selections()
+    root.wait_window(csWin)
 
     options = {'title': 'Save As',
                'initialfile': os.path.join(os.path.dirname(in_file),
@@ -755,12 +747,8 @@ def convert_to_excel(type='custom'):
                'filetypes': file_type_filters}
     file_save_path = save_file_as(options)
 
-    if file_save_path and type == 'complete':
-        generateFullExcel(file_save_path, excludeUnpriced=noUnpriced.get(),
-                          expandPriceLevels=expandPriceLevels.get())
-    elif file_save_path and type == 'custom':
-        generate_custom_excel_spreadsheet(file_save_path,
-                                          excludeUnpriced=noUnpriced.get())
+    if file_save_path:
+        generate_custom_excel_spreadsheet(file_save_path)
 
 
 def build_ig_price_array(price_map):
@@ -917,96 +905,95 @@ def resource_path(relative_path):
         return os.path.join(os.path.abspath("."), relative_path)
 
 
-root = Tk()
-root.option_add('*tearOff', FALSE)
-root.title("Agilysys Import Export Tool")
-ICON = resource_path('resources/Format_Gears.ico')
-try:
-    root.iconbitmap(default=ICON)
-except TclError:
-    logging.error('Unable to locate icon at {0}'.format(ICON))
+def main():
+    global root, file_display_string, debug_log_enabled
+    global FSOCK, simplifyButtons, hideable_buttons
+    root = Tk()
+    root.option_add('*tearOff', FALSE)
+    root.title("Agilysys Import Export Tool")
+    ICON = resource_path('resources/Format_Gears.ico')
+    try:
+        root.iconbitmap(default=ICON)
+    except TclError:
+        logging.error('Unable to locate icon at {0}'.format(ICON))
 
-file_display_string = StringVar()
-noUnpriced = BooleanVar()
-expandPriceLevels = BooleanVar()
-colPrice = BooleanVar()
-debug_log_enabled = BooleanVar()
+    file_display_string = StringVar()
+    debug_log_enabled = BooleanVar()
 
-if log_level == logging.DEBUG:
-    debug_log_enabled.set(True)
-else:
-    debug_log_enabled.set(False)
+    if log_level == logging.DEBUG:
+        debug_log_enabled.set(True)
+    else:
+        debug_log_enabled.set(False)
 
-if not os.path.exists(APP_DIR):
-    os.mkdir(APP_DIR)
+    if not os.path.exists(APP_DIR):
+        os.mkdir(APP_DIR)
 
-if getattr(sys, 'frozen', True):
-    FSOCK = open(LOG_FILE, 'a+')
-    sys.stderr = FSOCK
+    if getattr(sys, 'frozen', True):
+        FSOCK = open(LOG_FILE, 'a+')
+        sys.stderr = FSOCK
 
-menubar = Menu(root)
-menu_file = Menu(menubar)
-menu_debug_options = Menu(menubar)
-menu_help = Menu(menubar)
-menubar.add_cascade(menu=menu_file, label='File')
-menubar.add_cascade(menu=menu_help, label='Help')
-# Add Debug Menu only when not compiled
-if not getattr(sys, 'frozen', False):
-    menubar.add_cascade(menu=menu_debug_options, label='Debug')
+    menubar = Menu(root)
+    menu_file = Menu(menubar)
+    menu_debug_options = Menu(menubar)
+    menu_help = Menu(menubar)
+    menubar.add_cascade(menu=menu_file, label='File')
+    menubar.add_cascade(menu=menu_help, label='Help')
+    # Add Debug Menu only when not compiled
+    if not getattr(sys, 'frozen', False):
+        menubar.add_cascade(menu=menu_debug_options, label='Debug')
 
-menu_file.add_command(label='Open...', command=open_file)
-menu_file.add_command(label='Close', command=root.quit)
+    menu_file.add_command(label='Open...', command=open_file)
+    menu_file.add_command(label='Close', command=root.quit)
 
-menu_debug_options.add_checkbutton(label='Remove Unpriced Items',
-                                   variable=noUnpriced, onvalue=1, offvalue=0)
-menu_debug_options.add_checkbutton(label='Separate Price Level',
-                                   variable=expandPriceLevels, onvalue=1,
-                                   offvalue=0)
-menu_debug_options.add_command(label='Display Vars',
-                               command=lambda: show_var_states(
-                                   checkbox_variable_map))
-menu_debug_options.add_checkbutton(
-    label='Enable Debug Logging',
-    variable=debug_log_enabled,
-    command=toggle_debug_logging)
+    menu_debug_options.add_command(label='Display Vars',
+                                   command=lambda: show_var_states(
+                                       checkbox_variable_map))
+    menu_debug_options.add_checkbutton(
+        label='Enable Debug Logging',
+        variable=debug_log_enabled,
+        command=toggle_debug_logging)
 
-menu_help.add_command(label='About', command=display_about)
-menu_help.add_command(
-    label='Display Log',
-    command=lambda: subprocess.call("explorer {}".format(
-        os.path.dirname(LOG_FILE)), shell=True))
+    menu_help.add_command(label='About', command=display_about)
+    menu_help.add_command(
+        label='Display Log',
+        command=lambda: subprocess.call("explorer {}".format(
+            os.path.dirname(LOG_FILE)), shell=True))
 
-mainframe = ttk.Frame(root, padding="3 3 12 12")
-mainframe.grid(column=0, row=1, sticky=(N, W, E, S))
-mainframe.columnconfigure(0, weight=1)
-mainframe.rowconfigure(1, weight=1)
+    mainframe = ttk.Frame(root, padding="3 3 12 12")
+    mainframe.grid(column=0, row=1, sticky=(N, W, E, S))
+    mainframe.columnconfigure(0, weight=1)
+    mainframe.rowconfigure(1, weight=1)
 
-ttk.Label(mainframe, text="File:").grid(
-    column=1, row=1, sticky=(N, W, E))
-openFile_entry = ttk.Entry(mainframe, width=40,
-                           textvariable=file_display_string, state='disabled')
-openFile_entry.grid(column=1, row=2, sticky=(W, E))
+    ttk.Label(mainframe, text="File:").grid(
+        column=1, row=1, sticky=(N, W, E))
+    openFile_entry = ttk.Entry(mainframe, width=40,
+                               textvariable=file_display_string, state='disabled')
+    openFile_entry.grid(column=1, row=2, sticky=(W, E))
 
-button_open = ttk.Button(mainframe, text='...', command=open_file)
-button_open.grid(column=2, row=2, sticky=(W))
-open_tooltip = ToolTip(button_open, 'Select the Excel file required to'
-                                    ' generate the IG formatted CSV file')
-button_ig = ttk.Button(mainframe, text='Generate IG Update',
-                       command=convert_to_ig_format)
-button_ig.grid(column=1, row=3)
-ig_tooltip = ToolTip(button_ig, 'Generate IG formatted CSV file(s)')
+    button_open = ttk.Button(mainframe, text='...', command=open_file)
+    button_open.grid(column=2, row=2, sticky=(W))
+    open_tooltip = ToolTip(button_open, 'Select the Excel file required to'
+                                        ' generate the IG formatted CSV file')
+    button_ig = ttk.Button(mainframe, text='Generate IG Update',
+                           command=convert_to_ig_format)
+    button_ig.grid(column=1, row=3)
+    ig_tooltip = ToolTip(button_ig, 'Generate IG formatted CSV file(s)')
 
-button_excel = ttk.Button(mainframe, text='Create Excel File',
-                          command=lambda: convert_to_excel('custom'))
-button_excel.grid(column=1, row=6)
+    button_excel = ttk.Button(mainframe, text='Create Excel File',
+                              command=convert_to_excel)
+    button_excel.grid(column=1, row=6)
 
-simplifyButtons = [button_excel]
-hideable_buttons = [button_excel, button_ig]
+    simplifyButtons = [button_excel]
+    hideable_buttons = [button_excel, button_ig]
 
-for child in mainframe.winfo_children():
-    child.grid_configure(padx=5, pady=5)
+    for child in mainframe.winfo_children():
+        child.grid_configure(padx=5, pady=5)
 
-root.bind_all("<Control-Alt-d>", toggle_debug_logging)
-root.config(menu=menubar)
-hide_all_buttons()
-root.mainloop()
+    root.bind_all("<Control-Alt-d>", toggle_debug_logging)
+    root.config(menu=menubar)
+    hide_all_buttons()
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

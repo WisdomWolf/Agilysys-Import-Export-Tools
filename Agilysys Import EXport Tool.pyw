@@ -26,7 +26,7 @@ from xlrd import open_workbook
 from openpyxl import load_workbook
 from MenuItem import MenuItem
 
-__version__ = 'v0.12.4'
+__version__ = 'v0.12.7'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -114,9 +114,11 @@ def open_file(options=None):
 
     try:
         if get_file_type(in_file) == IG_EXPORT:
+            logging.debug('displaying excel buttons')
             for button in simplifyButtons:
                 show_button(button)
         else:
+            logging.debug('displaying ig button')
             show_button(button_ig)
 
         config['Paths'] = {'last dir': in_file}
@@ -970,7 +972,7 @@ def resource_path(relative_path):
 
 def main():
     global root, file_display_string, debug_log_enabled
-    global FSOCK, simplifyButtons, hideable_buttons
+    global FSOCK, simplifyButtons, hideable_buttons, button_ig
     root = Tk()
     root.option_add('*tearOff', FALSE)
     root.title("Agilysys Import Export Tool")

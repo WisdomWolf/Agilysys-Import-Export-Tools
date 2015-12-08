@@ -61,7 +61,7 @@ class MenuItem(object):
                 tare=None, sku=None, gunCode=None, cost=None, pricePrompt=0,
                 prntOnChk=1, disc=1, voidable=1, inactive=0, taxIncluded=0,
                 itemGrp=None, receipt='', priceOver=1, choiceGrps=None,
-                ktchnPrint=None, covers=0, storeID=0, reserved_18=0,
+                ktchnPrint=None, covers=0, storeID=None, reserved_18=0,
                 reserved_28=0
                 ):
 
@@ -93,7 +93,7 @@ class MenuItem(object):
         self.choice_groups = choiceGrps #array in seq 29
         self.kitchen_printers = ktchnPrint #array in seq 30
         self.covers = covers #seq 31
-        self.store_id = storeID #seq 32
+        self.store_id = int_cast(storeID) #seq 32
         self.reserved_18 = reserved_18
         self.reserved_28 = reserved_28
 

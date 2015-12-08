@@ -196,14 +196,13 @@ def pre_parse_ig_file(file_name):
                 if not response:
                     os._exit(1)
             # Skip Store Items
-            if str(i.store_id) == '0' or 'barcode' in file_name:
+            if str(i.store_id) == '0':
                 logging.debug('adding item {} to list'.format(i))
                 itemList.append(i)
             else:
                 logging.debug('skipping item {}'.format(i))
                 continue
     logging.info("parse completed")
-    duplicate_sku_test()
 
 
 # Might be worth moving this to MenuItem class
@@ -742,6 +741,13 @@ def convert_to_excel():
         with codecs.open(in_file, 'r', 'latin-1') as export:
             pre_parse_ig_file(export)
     file_parts = str(os.path.basename(in_file)).rsplit('.', maxsplit=1)
+    if 'duplicate' not in in_file and 'barcode' not in in_file:
+        logging.debug('preparing to test for duplicate barcodes')
+        barcodes_filename = '{}_duplicate_barcodes.txt'\
+            .format(file_parts[0])
+        dupe_barcodes_file = os.path.join(os.path.dirname(in_file),
+                                          barcodes_filename)
+        duplicate_sku_test(dupe_barcodes_file)
 
     default_filename = file_parts[0] + '_custom.xls'
     display_item_property_selections()
@@ -754,6 +760,7 @@ def convert_to_excel():
     file_save_path = save_file_as(options)
 
     if file_save_path:
+        logging.debug('saving output to {}'.format(file_save_path))
         generate_custom_excel_spreadsheet(file_save_path)
 
 
@@ -807,7 +814,7 @@ def duplicate_sku_finder(items):
     return duplicitous_items
 
 
-def duplicate_sku_test():
+def duplicate_sku_test(barcode_file=None):
     """Debugging stub method to output duplicate barcodes"""
     logging.debug('attempting duplicate sku test')
     if itemList:
@@ -819,15 +826,20 @@ def duplicate_sku_test():
         logging.error('Unable to complete duplicate_sku_test, itemList empty')
         return
 
-    barcode_log = os.path.join(os.path.dirname(in_file),
-                               'duplicate_barcodes.log')
-    barcode_pickle = os.path.join(os.path.dirname(in_file),
-                               'duplicate_barcodes.p')
+    if item_strings:
+        response = messagebox.askokcancel(
+            title='Duplicate Barcodes Found',
+            message='Would you like to save '
+                    'duplicate barcodes to file?')
+        if response:
+            barcode_file = barcode_file or \
+                os.path.join(os.path.dirname(in_file),
+                             'item_duplicate_barcodes.txt')
 
-    write_to_text_file(barcode_log, item_strings)
-    logging.info('duplicate_barcodes.log created successfully')
-    with open(barcode_pickle, 'wb+') as f:
-        pickle.dump(dupe_items, f)
+            write_to_text_file(barcode_file, item_strings)
+            logging.info('duplicate_barcodes output successfully')
+        else:
+            logging.info('duplicate barcode output skipped')
 
 
 def safeIntCast(value):

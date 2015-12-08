@@ -8,8 +8,10 @@
 import argparse
 import os
 import codecs
+import collections
 import datetime
 import logging
+import pickle
 import pdb
 import subprocess
 import sys
@@ -32,6 +34,7 @@ INTEGER_FIELDS = MenuItem.INTEGER_FIELDS
 STRING_FIELDS = MenuItem.STRING_FIELDS
 PRICE_ARRAY_REGEX = re.compile(r'(?<=\{)[^(\{|\})].+?(?=\})')
 QUOTED_COMMAS_REGEX = re.compile(r'((?<=")[^",\{\}]+),([^"\{\}]*(?="))')
+BARCODE_REGEX = re.compile(r'(?<=")\d+(?=")')
 PRICE_COLUMN = 8
 MAX_STRING_LENGTH = 38
 file_type_filters = [('Supported Files', '.xls .xlsx .txt'),
@@ -54,7 +57,7 @@ try:
 except NameError:
     log_level = logging.WARNING
 log_formatter = logging.Formatter(fmt='%(asctime)s %(message)s',
-                    datefmt='%H:%M:%S | ')
+                                  datefmt='%H:%M:%S | ')
 root_logger = logging.getLogger()
 file_handler = logging.FileHandler(LOG_FILE)
 root_logger.addHandler(file_handler)
@@ -76,7 +79,6 @@ IG_EXPORT = 1
 EXCEL_FILE = 3
 itemList = []
 itemMap = {}
-
 
 
 def open_file(options=None):
@@ -142,6 +144,7 @@ def directory_display(directory):
 def write_to_text_file(file, *args):
     """Writes contents of one or more lists to a file. One item per line."""
     output_list = []
+    logging.debug('Preparing to write data to {}'.format(file))
     with open(file, 'w+') as f:
         for arg in args:
             f.write('\n'.join(arg))
@@ -193,11 +196,14 @@ def pre_parse_ig_file(file_name):
                 if not response:
                     os._exit(1)
             # Skip Store Items
-            if str(i.store_id) == '0':
+            if str(i.store_id) == '0' or 'barcode' in file_name:
+                logging.debug('adding item {} to list'.format(i))
                 itemList.append(i)
             else:
+                logging.debug('skipping item {}'.format(i))
                 continue
     logging.info("parse completed")
+    duplicate_sku_test()
 
 
 # Might be worth moving this to MenuItem class
@@ -213,7 +219,7 @@ def count_price_levels():
                 price_level_list.append(level)
                 # if max(k for k in levels.keys()) > num_price_levels:
                 #     num_price_levels = max(k for k in levels.keys())
-    logging.debug('returning results of price level count')
+    logging.debug('found {} price levels'.format(num_price_levels))
     return num_price_levels, price_level_list
 
 
@@ -556,7 +562,7 @@ def generate_standardized_ig_imports(book, save_path):
                         use_weight = 1
                     else:
                         logging.warning('Skipping item {0} because price was wrong'
-                              .format(i))
+                                        .format(i))
                         continue
 
             prices = build_ig_price_array(price_map)
@@ -627,10 +633,10 @@ def generate_standardized_ig_imports(book, save_path):
                 'Located in the following directory:\n\n{2}\n\n'
                 'Please send these files to Agilysys'
                 ' for importing into InfoGenesis'.format(
-                    os.path.basename(ig_priced_file),
-                    os.path.basename(ig_unpriced_file),
-                    os.path.dirname(ig_priced_file)
-                )
+            os.path.basename(ig_priced_file),
+            os.path.basename(ig_unpriced_file),
+            os.path.dirname(ig_priced_file)
+        )
     )
 
 
@@ -646,7 +652,7 @@ def get_revenue_categories(book):
             except IndexError:
                 logging.error(
                     "oops, couldn't read row {0} from Revenue Categories"
-                    .format(row))
+                        .format(row))
     else:
         sheet = book['Revenue Categories']
         try:
@@ -671,7 +677,7 @@ def get_product_classes(book):
             except IndexError:
                 logging.error(
                     "oops, couldn't read row {0} from Product Classes"
-                    .format(row))
+                        .format(row))
     else:
         sheet = book['Product Classes']
         for row in sheet.rows:
@@ -777,6 +783,51 @@ def build_ig_price_array(price_map):
 
     record = '{' + ','.join(prices) + '}'
     return record
+
+
+def duplicate_sku_finder(items):
+    """Finds all items associated with duplicate barcodes"""
+    logging.debug('duplicate_sku_finder started')
+    duplicitous_items = []
+    item_skus = []
+    for item in items:
+        sku = re.search(BARCODE_REGEX, item.sku)
+        if sku:
+            item_skus.append(sku.group(0))
+    logging.debug('skus extracted from items')
+    duplicate_skus = [x for x, y in collections.Counter(item_skus)
+                      .items() if y > 1]
+    logging.debug('duplicate skus calculated')
+    for item in items:
+        sku = re.search(BARCODE_REGEX, item.sku)
+        if sku and sku.group(0) in duplicate_skus:
+            duplicitous_items.append(item)
+
+    logging.debug('duplicate_sku_finder completed')
+    return duplicitous_items
+
+
+def duplicate_sku_test():
+    """Debugging stub method to output duplicate barcodes"""
+    logging.debug('attempting duplicate sku test')
+    if itemList:
+        item_strings = []
+        dupe_items = sorted(duplicate_sku_finder(itemList), key=lambda x: x.sku)
+        for item in dupe_items:
+            item_strings.append('"A",{}'.format(item))
+    else:
+        logging.error('Unable to complete duplicate_sku_test, itemList empty')
+        return
+
+    barcode_log = os.path.join(os.path.dirname(in_file),
+                               'duplicate_barcodes.log')
+    barcode_pickle = os.path.join(os.path.dirname(in_file),
+                               'duplicate_barcodes.p')
+
+    write_to_text_file(barcode_log, item_strings)
+    logging.info('duplicate_barcodes.log created successfully')
+    with open(barcode_pickle, 'wb+') as f:
+        pickle.dump(dupe_items, f)
 
 
 def safeIntCast(value):
@@ -952,6 +1003,8 @@ def main():
         label='Enable Debug Logging',
         variable=debug_log_enabled,
         command=toggle_debug_logging)
+    menu_debug_options.add_command(label='Duplicate Barcode Check',
+                                   command=duplicate_sku_test)
 
     menu_help.add_command(label='About', command=display_about)
     menu_help.add_command(

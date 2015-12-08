@@ -13,5 +13,7 @@ rem ***** cleanup temp files
 DEL *.exe
 DEL *.dll
 DEL library.zip
+RD /S /Q resources
+RD /S /Q tcl
 
 rem ***** Need to adjust to include folders in zip

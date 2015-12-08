@@ -7,7 +7,7 @@ RD /S /Q dist
 
 python setup.py py2exe
 CD dist
-7z a AIEXT.zip *.*
+7z a -r AIEXT.zip *.*
 PAUSE
 rem ***** cleanup temp files
 DEL *.exe

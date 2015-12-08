@@ -114,11 +114,21 @@ def open_file(options=None):
 
     try:
         if get_file_type(in_file) == IG_EXPORT:
-            logging.debug('displaying excel buttons')
+            logging.debug('IG_EXPORT found')
+            pre_parse_ig_file(in_file)
+            if 'duplicate' not in in_file and 'barcode' not in in_file:
+                logging.debug('preparing to test for duplicate barcodes')
+                file_parts = str(os.path.basename(in_file))\
+                    .rsplit('.', maxsplit=1)
+                barcodes_filename = '{}_duplicate_barcodes.txt'\
+                    .format(file_parts[0])
+                dupe_barcodes_file = os.path.join(os.path.dirname(in_file),
+                                                  barcodes_filename)
+                duplicate_sku_test(dupe_barcodes_file)
             for button in simplifyButtons:
                 show_button(button)
         else:
-            logging.debug('displaying ig button')
+            logging.debug('EXCEL found')
             show_button(button_ig)
 
         config['Paths'] = {'last dir': in_file}
@@ -199,7 +209,6 @@ def pre_parse_ig_file(file_name):
                     os._exit(1)
             # Skip Store Items
             if str(i.store_id) == '0':
-                logging.debug('adding item {} to list'.format(i))
                 itemList.append(i)
             else:
                 logging.debug('skipping item {}'.format(i))
@@ -735,22 +744,7 @@ def convert_to_ig_format():
 
 def convert_to_excel():
     """Initiates conversion from IG Format to Excel spreadsheet"""
-    export = in_file
-
-    try:
-        pre_parse_ig_file(export)
-    except UnicodeDecodeError:
-        with codecs.open(in_file, 'r', 'latin-1') as export:
-            pre_parse_ig_file(export)
     file_parts = str(os.path.basename(in_file)).rsplit('.', maxsplit=1)
-    if 'duplicate' not in in_file and 'barcode' not in in_file:
-        logging.debug('preparing to test for duplicate barcodes')
-        barcodes_filename = '{}_duplicate_barcodes.txt'\
-            .format(file_parts[0])
-        dupe_barcodes_file = os.path.join(os.path.dirname(in_file),
-                                          barcodes_filename)
-        duplicate_sku_test(dupe_barcodes_file)
-
     default_filename = file_parts[0] + '_custom.xls'
     display_item_property_selections()
     root.wait_window(csWin)
@@ -818,6 +812,10 @@ def duplicate_sku_finder(items):
 
 def duplicate_sku_test(barcode_file=None):
     """Debugging stub method to output duplicate barcodes"""
+    global dupe_sku_check_enabled
+    if not dupe_sku_check_enabled.get():
+        logging.info('Barcode check disabled.  Skipping')
+        return
     logging.debug('attempting duplicate sku test')
     if itemList:
         item_strings = []
@@ -973,6 +971,7 @@ def resource_path(relative_path):
 def main():
     global root, file_display_string, debug_log_enabled
     global FSOCK, simplifyButtons, hideable_buttons, button_ig
+    global dupe_sku_check_enabled
     root = Tk()
     root.option_add('*tearOff', FALSE)
     root.title("Agilysys Import Export Tool")
@@ -984,6 +983,7 @@ def main():
 
     file_display_string = StringVar()
     debug_log_enabled = BooleanVar()
+    dupe_sku_check_enabled = BooleanVar()
 
     if log_level == logging.DEBUG:
         debug_log_enabled.set(True)
@@ -1013,12 +1013,14 @@ def main():
     menu_debug_options.add_command(label='Display Vars',
                                    command=lambda: show_var_states(
                                        checkbox_variable_map))
+
     menu_debug_options.add_checkbutton(
         label='Enable Debug Logging',
         variable=debug_log_enabled,
         command=toggle_debug_logging)
-    menu_debug_options.add_command(label='Duplicate Barcode Check',
-                                   command=duplicate_sku_test)
+
+    menu_debug_options.add_checkbutton(label='Duplicate Barcode Check',
+                                       variable=dupe_sku_check_enabled)
 
     menu_help.add_command(label='About', command=display_about)
     menu_help.add_command(

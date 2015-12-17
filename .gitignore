@@ -6,6 +6,10 @@
 **.xls
 **pycache**
 **.lnk
+**.p
+**.zip
 /build/
 /dist/
 /.idea/**
+AIEXT.pyw
+Item_Testing.py

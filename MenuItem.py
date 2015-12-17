@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
 import re
+import logging
 
 quoteMatch = re.compile(r'(^"+|"+$)')
 
-class MenuItem:
+class MenuItem(object):
     """An object to simplify item property assignment"""
 
     IG_FIELD_SEQUENCE = {
@@ -60,7 +61,7 @@ class MenuItem:
                 tare=None, sku=None, gunCode=None, cost=None, pricePrompt=0,
                 prntOnChk=1, disc=1, voidable=1, inactive=0, taxIncluded=0,
                 itemGrp=None, receipt='', priceOver=1, choiceGrps=None,
-                ktchnPrint=None, covers=0, storeID=0, reserved_18=0,
+                ktchnPrint=None, covers=0, storeID=None, reserved_18=0,
                 reserved_28=0
                 ):
 
@@ -92,7 +93,7 @@ class MenuItem:
         self.choice_groups = choiceGrps #array in seq 29
         self.kitchen_printers = ktchnPrint #array in seq 30
         self.covers = covers #seq 31
-        self.store_id = storeID #seq 32
+        self.store_id = int_cast(storeID) #seq 32
         self.reserved_18 = reserved_18
         self.reserved_28 = reserved_28
 
@@ -156,12 +157,27 @@ class MenuItem:
             return ''
 
 
-    @staticmethod
-    def get_flag_as_text(number):
-        if number == 0:
-            return 'False'
-        else:
-            return 'True'
+def count_price_levels(itemList):
+    """Returns total number of price levels"""
+    logging.debug('counting price levels')
+    num_price_levels = 0
+    price_level_list = []
+    for item in itemList:
+        levels = item.get_prices_dict()
+        for level in levels.keys():
+            if level not in price_level_list:
+                price_level_list.append(level)
+
+    logging.debug('returning results of price level count')
+    return price_level_list
+
+
+@staticmethod
+def get_flag_as_text(number):
+    if number == 0:
+        return 'False'
+    else:
+        return 'True'
 
 
 def remove_quotes(match):

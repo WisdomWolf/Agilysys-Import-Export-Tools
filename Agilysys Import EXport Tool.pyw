@@ -41,6 +41,9 @@ file_type_filters = [('Supported Files', '.xls .xlsx .txt'),
                      ('Text Files', '.txt'),
                      ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 APP_DIR = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
+if not os.path.exists(APP_DIR):
+        os.mkdir(APP_DIR)
+        
 CONFIG_FILE = os.path.join(APP_DIR, 'config.ini')
 LOG_FILE = os.path.join(APP_DIR, 'errors.log')
 config = ConfigParser()
@@ -59,7 +62,13 @@ except NameError:
 log_formatter = logging.Formatter(fmt='%(asctime)s %(message)s',
                                   datefmt='%H:%M:%S | ')
 root_logger = logging.getLogger()
-file_handler = logging.FileHandler(LOG_FILE)
+try:
+    file_handler = logging.FileHandler(LOG_FILE)
+except FileNotFoundError:
+    with open(LOG_FILE, 'w+') as file:
+        file.write(' ')
+    file_handler = logging.FileHandler(LOG_FILE)
+
 root_logger.addHandler(file_handler)
 root_logger.setLevel(log_level)
 
@@ -118,9 +127,9 @@ def open_file(options=None):
             pre_parse_ig_file(in_file)
             if 'duplicate' not in in_file and 'barcode' not in in_file:
                 logging.debug('preparing to test for duplicate barcodes')
-                file_parts = str(os.path.basename(in_file)) \
+                file_parts = str(os.path.basename(in_file))\
                     .rsplit('.', maxsplit=1)
-                barcodes_filename = '{}_duplicate_barcodes.txt' \
+                barcodes_filename = '{}_duplicate_barcodes.txt'\
                     .format(file_parts[0])
                 dupe_barcodes_file = os.path.join(os.path.dirname(in_file),
                                                   barcodes_filename)
@@ -799,7 +808,7 @@ def duplicate_sku_finder(items):
             item_skus.append(sku.group(0))
     logging.debug('skus extracted from items')
     duplicate_skus = [x for x, y in collections.Counter(item_skus)
-        .items() if y > 1]
+                      .items() if y > 1]
     logging.debug('duplicate skus calculated')
     for item in items:
         sku = re.search(BARCODE_REGEX, item.sku)
@@ -833,14 +842,11 @@ def duplicate_sku_test(barcode_file=None):
                     'duplicate barcodes to file?')
         if response:
             barcode_file = barcode_file or \
-                           os.path.join(os.path.dirname(in_file),
-                                        'item_duplicate_barcodes.txt')
+                os.path.join(os.path.dirname(in_file),
+                             'item_duplicate_barcodes.txt')
 
             write_to_text_file(barcode_file, item_strings)
             logging.info('duplicate_barcodes output successfully')
-            messagebox.showinfo(title='Success',
-                                message='duplicate_barcodes'
-                                        ' output successfully')
         else:
             logging.info('duplicate barcode output skipped')
 
@@ -992,9 +998,6 @@ def main():
         debug_log_enabled.set(True)
     else:
         debug_log_enabled.set(False)
-
-    if not os.path.exists(APP_DIR):
-        os.mkdir(APP_DIR)
 
     if getattr(sys, 'frozen', True):
         FSOCK = open(LOG_FILE, 'a+')

@@ -26,7 +26,7 @@ from xlrd import open_workbook
 from openpyxl import load_workbook
 from MenuItem import MenuItem
 
-__version__ = 'v0.12.7'
+__version__ = 'v0.12.28'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -41,6 +41,9 @@ file_type_filters = [('Supported Files', '.xls .xlsx .txt'),
                      ('Text Files', '.txt'),
                      ('Excel Files', '.xls .xlsx .csv'), ('All Files', '.*')]
 APP_DIR = os.path.join(os.getenv('APPDATA'), 'Agilysys Format Tools')
+if not os.path.exists(APP_DIR):
+        os.mkdir(APP_DIR)
+        
 CONFIG_FILE = os.path.join(APP_DIR, 'config.ini')
 LOG_FILE = os.path.join(APP_DIR, 'errors.log')
 config = ConfigParser()
@@ -59,7 +62,13 @@ except NameError:
 log_formatter = logging.Formatter(fmt='%(asctime)s %(message)s',
                                   datefmt='%H:%M:%S | ')
 root_logger = logging.getLogger()
-file_handler = logging.FileHandler(LOG_FILE)
+try:
+    file_handler = logging.FileHandler(LOG_FILE)
+except FileNotFoundError:
+    with open(LOG_FILE, 'w+') as file:
+        file.write(' ')
+    file_handler = logging.FileHandler(LOG_FILE)
+
 root_logger.addHandler(file_handler)
 root_logger.setLevel(log_level)
 
@@ -989,9 +998,6 @@ def main():
         debug_log_enabled.set(True)
     else:
         debug_log_enabled.set(False)
-
-    if not os.path.exists(APP_DIR):
-        os.mkdir(APP_DIR)
 
     if getattr(sys, 'frozen', True):
         FSOCK = open(LOG_FILE, 'a+')

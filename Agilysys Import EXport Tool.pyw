@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #! /usr/bin/python3
 
 # TODO Create Methods using openpyxl module for *.xls(x/m) support
@@ -1083,7 +1084,6 @@ def main():
     root.config(menu=menubar)
     hide_all_buttons()
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()

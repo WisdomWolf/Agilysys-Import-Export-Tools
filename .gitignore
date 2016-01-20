@@ -13,3 +13,5 @@
 /.idea/**
 AIEXT.pyw
 Item_Testing.py
+.project
+.pydevproject

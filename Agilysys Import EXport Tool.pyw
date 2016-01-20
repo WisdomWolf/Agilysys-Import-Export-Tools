@@ -26,7 +26,7 @@ from xlrd import open_workbook
 from openpyxl import load_workbook
 from MenuItem import MenuItem
 
-__version__ = 'v0.12.7'
+__version__ = 'v0.13.1'
 
 TEXT_HEADERS = MenuItem.TEXT_HEADERS
 IG_FIELD_SEQUENCE = MenuItem.IG_FIELD_SEQUENCE
@@ -469,6 +469,7 @@ def get_items_from_xlsx(book):
     """Returns item details from xlsx book"""
     sheet = book['Menu Items & Pricing']
     item_list = []
+    item_errors = 0
 
     for i, row in enumerate(sheet.rows):
         if i <= 5:
@@ -476,10 +477,19 @@ def get_items_from_xlsx(book):
         fields = []
         price_map = dict()
 
+        if item_errors >= 5:
+            logging.warning('Encountered several empty items. Aborted file read at {}'.format(i))
+            break
+
         for j, cell in enumerate(row):
             if j < 8:
-                property = cell.value
-                fields.append(property)
+                if j == 4 and (cell.value == '' or cell.value is None):
+                    item_errors += 1
+                    logging.warning('item {0} has no name. Item Errors:{1}'.format(i - 6, item_errors))
+                    break
+                else:
+                    property = cell.value
+                    fields.append(property)
             else:
                 price_level = j
                 level = price_level - 7
@@ -492,7 +502,8 @@ def get_items_from_xlsx(book):
         else:
             fields.append(None)
 
-        item_list.append(fields)
+        if any(fields):
+            item_list.append(fields)
     return item_list
 
 
@@ -593,7 +604,7 @@ def generate_standardized_ig_imports(book, save_path):
 
         # Skip junk items
         if type(name) is not str:
-            logging.warning('Skipping item {0} because name is invalid'.format(i))
+            logging.warning('Skipping item {0} because name ({1}) is invalid'.format(i, name))
             continue
 
         try:
@@ -726,7 +737,7 @@ def get_file_type(filename):
 
 def convert_to_ig_format():
     """Initiates conversion from Excel spreadsheet to IG text file"""
-    logging.debug('starting conversion to IG Format')
+    logging.warn('starting conversion to IG Format')
     options = {
         'title': 'Save As',
         'initialfile': os.path.join(os.path.dirname(in_file), 'MI_IMP.txt')
@@ -739,7 +750,7 @@ def convert_to_ig_format():
         book = open_workbook(in_file)
         sheet = book.sheet_by_index(0)
 
-        if book.nsheets > 1:
+        if book.nsheets > 3:
             generate_standardized_ig_imports(book, in_file)
         else:
             file_save_path = save_file_as(options)
@@ -977,6 +988,10 @@ def resource_path(relative_path):
         return os.path.join(os.path.abspath("."), relative_path)
 
 
+def save_dupe_sku_check(event=None):
+    config['']
+
+
 def main():
     global root, file_display_string, debug_log_enabled
     global FSOCK, simplifyButtons, hideable_buttons, button_ig
@@ -1009,7 +1024,7 @@ def main():
     menu_help = Menu(menubar)
     menubar.add_cascade(menu=menu_file, label='File')
     menubar.add_cascade(menu=menu_help, label='Help')
-    # Add Debug Menu only when not compiled
+     # Add Debug Menu only when not compiled
     if not getattr(sys, 'frozen', False):
         menubar.add_cascade(menu=menu_debug_options, label='Debug')
 
